@@ -40,7 +40,9 @@ export default function Profile() {
 
     const handleMessage = async (event: MessageEvent) => {
       const origin = event.origin;
-      if (!origin.endsWith('.run.app') && !origin.includes('localhost')) {
+      const isSameOrigin = origin === window.location.origin;
+      const isSandboxOrigin = origin.endsWith('.run.app') || origin.includes('localhost');
+      if (!isSameOrigin && !isSandboxOrigin) {
         return;
       }
 
@@ -363,11 +365,15 @@ export default function Profile() {
                     <span>Active App Callback URL configuration</span>
                   </p>
                   <p className="text-[11px] leading-relaxed text-slate-450">Current expected route matching selection:</p>
-                  <div className="bg-slate-900 px-3 py-2.5 rounded border border-slate-800 text-cyan-400 font-mono text-[10px] select-all break-all whitespace-pre-wrap leading-normal">
+                  <div className="bg-slate-900 px-3 py-2.5 rounded border border-slate-800 text-cyan-400 font-mono text-[10px] select-all break-all whitespace-pre-wrap leading-normal font-mono">
                     {redirectUriMode === 'omit' ? 'Omit parameter (fall back to GitHub App configuration)' : 
                      redirectUriMode === 'dev' ? 'https://ais-dev-23alz57aos6vikqk5vw7qo-83508965727.europe-west1.run.app/auth/callback' :
                      redirectUriMode === 'pre' ? 'https://ais-pre-23alz57aos6vikqk5vw7qo-83508965727.europe-west1.run.app/auth/callback' :
-                     detectedCallbackUrl || `${window.location.origin}/auth/callback`}
+                     detectedCallbackUrl || (
+                       !window.location.hostname.endsWith('.run.app') && window.location.hostname !== 'localhost'
+                         ? `${window.location.origin}/api/github/callback`
+                         : `${window.location.origin}/auth/callback`
+                     )}
                   </div>
                   <p className="text-[10px] text-slate-500 leading-normal">
                     💡 **Setup Hint**: You can define multiple callback URLs by putting them on new lines in your GitHub App settings (e.g. for both Dev and Shared Previews).
@@ -388,9 +394,13 @@ export default function Profile() {
                     <p className="font-bold text-slate-305">📋 GitHub App Setup Instructions:</p>
                     <p>1. Go to <a href="https://github.com/settings/apps" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">GitHub Apps Developer Settings</a> & click **New GitHub App** or edit your existing one.</p>
                     <p>2. Set the **Callback URL** field (under the "Identifying and authorizing users" section) to the routes below. **Note**: Enter **both** URLs on separate lines in the field so both your Dev sandbox and Shared previews are allowed, avoiding the `redirect_uri` mismatch warning:</p>
-                    <div className="bg-slate-900 p-2.5 rounded border border-slate-800 text-slate-300 select-all font-mono whitespace-pre-wrap break-all my-1.5 text-[9px] leading-normal">
+                    <div className="bg-slate-900 p-2.5 rounded border border-slate-800 text-slate-300 select-all font-mono whitespace-pre-wrap break-all my-1.5 text-[9px] leading-normal font-mono">
 {`https://ais-dev-23alz57aos6vikqk5vw7qo-83508965727.europe-west1.run.app/auth/callback
-https://ais-pre-23alz57aos6vikqk5vw7qo-83508965727.europe-west1.run.app/auth/callback`}
+https://ais-pre-23alz57aos6vikqk5vw7qo-83508965727.europe-west1.run.app/auth/callback${
+  !window.location.hostname.endsWith('.run.app') && window.location.hostname !== 'localhost'
+    ? `\n${window.location.origin}/api/github/callback`
+    : ''
+}`}
                     </div>
                     <p>3. Under **Permissions**, grant **Repository permissions** (e.g. Metadata: Read-only, Contents: Read-only) so user pipelines can read branch sources.</p>
                     <p>4. Save changes and copy **Client ID** and generate a new **Client Secret**.</p>

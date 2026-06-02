@@ -33,7 +33,9 @@ app.get("/api/health", (req, res) => {
       const protocol = isHttps ? "https" : "http";
       appUrl = `${protocol}://${host}`;
     }
-    const defaultRedirectUri = `${appUrl}/auth/callback`;
+    const defaultRedirectUri = process.env.VERCEL 
+      ? `${appUrl}/api/github/callback` 
+      : `${appUrl}/auth/callback`;
 
     // Determine what redirectUri to use
     let redirectUri: string | undefined = defaultRedirectUri;
@@ -284,6 +286,8 @@ app.get("/api/health", (req, res) => {
     }
   }
 
-  setupVite();
+  if (!process.env.VERCEL) {
+    setupVite();
+  }
 
 export default app;
