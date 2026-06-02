@@ -67,7 +67,7 @@ async function startServer() {
   });
 
   // GitHub OAuth callback endpoint
-  app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
+  app.get(["/auth/callback", "/auth/callback/", "/api/github/callback", "/api/auth/github/callback", "/api/auth/callback"], async (req, res) => {
     const { code, state } = req.query;
 
     if (!code) {
@@ -126,7 +126,7 @@ async function startServer() {
           const protocol = isHttps ? "https" : "http";
           appUrl = `${protocol}://${host}`;
         }
-        redirectUri = `${appUrl}/auth/callback`;
+        redirectUri = `${appUrl}${req.path}`;
       }
 
       // Exchange code for access token
