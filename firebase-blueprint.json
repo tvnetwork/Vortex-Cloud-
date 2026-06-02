@@ -1,0 +1,163 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Developer platform profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["developer", "admin"] },
+        "githubUsername": { "type": "string" },
+        "balance": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role", "createdAt"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "A developer collection of microservices, databases, and apps",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "ownerId", "createdAt"]
+    },
+    "Service": {
+      "title": "Service",
+      "description": "A microservice container or database resource",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "projectId": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["web_service", "postgres", "redis", "static_site"] },
+        "status": { "type": "string", "enum": ["active", "deploying", "failed", "offline"] },
+        "repository": { "type": "string" },
+        "branch": { "type": "string" },
+        "port": { "type": "number" },
+        "domain": { "type": "string" },
+        "endpoint": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["projectId", "ownerId", "name", "type", "status", "createdAt"]
+    },
+    "Deployment": {
+      "title": "Deployment",
+      "description": "Build pipeline compilation run and history",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "serviceId": { "type": "string" },
+        "projectId": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "commitMsg": { "type": "string" },
+        "commitHash": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "deploying", "failed"] },
+        "logs": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["serviceId", "projectId", "ownerId", "status", "createdAt"]
+    },
+    "EnvVar": {
+      "title": "Environment Variable",
+      "description": "Secrets and key-value pair for code configuration",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "projectId": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "key": { "type": "string" },
+        "value": { "type": "string" },
+        "isSecret": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["projectId", "ownerId", "key", "value", "createdAt"]
+    },
+    "Metric": {
+      "title": "Metric History",
+      "description": "Recorded server load statistics (CPU, RAM, Bandwidth)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "serviceId": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "timestamps": { "type": "array", "items": { "type": "number" } },
+        "cpu": { "type": "array", "items": { "type": "number" } },
+        "ram": { "type": "array", "items": { "type": "number" } },
+        "bandwidth": { "type": "array", "items": { "type": "number" } },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["serviceId", "ownerId", "timestamps", "cpu", "ram", "bandwidth", "updatedAt"]
+    },
+    "CommunityMessage": {
+      "title": "Community Message",
+      "description": "Lobby discussion chat message",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderPhoto": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["senderId", "senderName", "text", "createdAt"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Platform billing history credit or debit event",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "amount": { "type": "number" },
+        "type": { "type": "string", "enum": ["deposit", "charge"] },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "amount", "type", "createdAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "Developer profile configuration"
+    },
+    "projects/{projectId}": {
+      "schema": "Project",
+      "description": "Workspace groups and projects"
+    },
+    "services/{serviceId}": {
+      "schema": "Service",
+      "description": "Active deployment microservices and databases"
+    },
+    "deployments/{deploymentId}": {
+      "schema": "Deployment",
+      "description": "Deploy processes history compilation output"
+    },
+    "envvars/{varId}": {
+      "schema": "EnvVar",
+      "description": "Developer server configuration credentials"
+    },
+    "metrics/{metricId}": {
+      "schema": "Metric",
+      "description": "Real-time metrics log sequences"
+    },
+    "community_messages/{messageId}": {
+      "schema": "CommunityMessage",
+      "description": "Lobby global conversation developer chat"
+    },
+    "transactions/{transId}": {
+      "schema": "Transaction",
+      "description": "Billing statement operations"
+    }
+  }
+}

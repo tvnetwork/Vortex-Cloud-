@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VyntaJobs | Elite Global Marketplace</title>
+    <script>
+      // Fix for "TypeError: Cannot set property fetch of #<Window> which has only a getter"
+      (function() {
+        var originalFetch = window.fetch;
+        var currentFetch = originalFetch;
+        
+        function tryDefine(obj) {
+          try {
+            Object.defineProperty(obj, 'fetch', {
+              get: function() { return currentFetch; },
+              set: function(v) { currentFetch = v; },
+              configurable: true,
+              enumerable: true
+            });
+            return true;
+          } catch (e) {
+            return false;
+          }
+        }
+
+        if (!tryDefine(window)) {
+          tryDefine(Object.getPrototypeOf(window));
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

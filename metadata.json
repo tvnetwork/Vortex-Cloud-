@@ -1,0 +1,8 @@
+{
+  "name": "Vortex Cloud",
+  "description": "Developer Serverless Edge Deployment and Database Core Platform.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

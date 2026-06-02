@@ -1,0 +1,201 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    
+    function isAdmin() { 
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.email == 'oladoyeheritage445@gmail.com'
+      ); 
+    }
+
+    // --- Enterprise Grade Validator Helpers ---
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role', 'createdAt']) &&
+             data.keys().size() <= 15 &&
+             data.uid == request.auth.uid &&
+             data.email is string && data.email.size() <= 256 &&
+             data.role in ['developer', 'admin'] &&
+             (data.get('displayName', '') is string && data.get('displayName', '').size() <= 100) &&
+             (data.get('photoURL', '') is string && data.get('photoURL', '').size() <= 1000) &&
+             (data.get('githubUsername', '') is string && data.get('githubUsername', '').size() <= 100) &&
+             (data.get('balance', 0) is number);
+    }
+
+    function isValidProject(data) {
+      return data.keys().hasAll(['name', 'ownerId', 'createdAt']) &&
+             data.keys().size() <= 10 &&
+             data.ownerId == request.auth.uid &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             (data.get('description', '') is string && data.get('description', '').size() <= 1000);
+    }
+
+    function isValidService(data) {
+      return data.keys().hasAll(['projectId', 'ownerId', 'name', 'type', 'status', 'createdAt']) &&
+             data.keys().size() <= 15 &&
+             data.ownerId == request.auth.uid &&
+             data.projectId is string && data.projectId.size() <= 128 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.type in ['web_service', 'postgres', 'redis', 'static_site'] &&
+             data.status in ['active', 'deploying', 'failed', 'offline'] &&
+             (data.get('repository', '') is string && data.get('repository', '').size() <= 256) &&
+             (data.get('branch', '') is string && data.get('branch', '').size() <= 100) &&
+             (data.get('port', 0) is number) &&
+             (data.get('domain', '') is string && data.get('domain', '').size() <= 256) &&
+             (data.get('endpoint', '') is string && data.get('endpoint', '').size() <= 500);
+    }
+
+    function isValidDeployment(data) {
+      return data.keys().hasAll(['serviceId', 'projectId', 'ownerId', 'status', 'createdAt']) &&
+             data.keys().size() <= 12 &&
+             data.ownerId == request.auth.uid &&
+             data.serviceId is string && data.serviceId.size() <= 128 &&
+             data.projectId is string && data.projectId.size() <= 128 &&
+             data.status in ['active', 'deploying', 'failed'] &&
+             (data.get('commitMsg', '') is string && data.get('commitMsg', '').size() <= 500) &&
+             (data.get('commitHash', '') is string && data.get('commitHash', '').size() <= 100) &&
+             (data.get('logs', []) is list && data.get('logs', []).size() <= 500);
+    }
+
+    function isValidEnvVar(data) {
+      return data.keys().hasAll(['projectId', 'ownerId', 'key', 'value', 'createdAt']) &&
+             data.keys().size() <= 8 &&
+             data.ownerId == request.auth.uid &&
+             data.projectId is string && data.projectId.size() <= 128 &&
+             data.key is string && data.key.size() > 0 && data.key.size() <= 200 &&
+             data.value is string && data.value.size() <= 4096 &&
+             (data.get('isSecret', false) is bool);
+    }
+
+    function isValidMetric(data) {
+      return data.keys().hasAll(['serviceId', 'ownerId', 'timestamps', 'cpu', 'ram', 'bandwidth', 'updatedAt']) &&
+             data.keys().size() <= 10 &&
+             data.ownerId == request.auth.uid &&
+             data.serviceId is string && data.serviceId.size() <= 128 &&
+             data.timestamps is list && data.timestamps.size() <= 100 &&
+             data.cpu is list && data.cpu.size() <= 100 &&
+             data.ram is list && data.ram.size() <= 100 &&
+             data.bandwidth is list && data.bandwidth.size() <= 100;
+    }
+
+    function isValidCommunityMessage(data) {
+      return data.keys().hasAll(['senderId', 'senderName', 'text', 'createdAt']) &&
+             data.keys().size() <= 7 &&
+             data.senderId == request.auth.uid &&
+             data.senderName is string && data.senderName.size() <= 100 &&
+             data.text is string && data.text.size() > 0 && data.text.size() <= 2000 &&
+             (data.get('senderPhoto', '') is string && data.get('senderPhoto', '').size() <= 1000);
+    }
+
+    function isValidTransaction(data) {
+      return data.keys().hasAll(['userId', 'amount', 'type', 'createdAt']) &&
+             data.keys().size() <= 7 &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.amount is number &&
+             data.type in ['deposit', 'charge'] &&
+             (data.get('description', '') is string && data.get('description', '').size() <= 500);
+    }
+
+    // --- Collection Rules ---
+
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isOwner(userId) && isValidUser(incoming()) && incoming().createdAt == request.time;
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (isOwner(userId) && isValidUser(incoming()) && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'githubUsername', 'balance', 'lastActive'])
+        ))
+      );
+    }
+
+    match /projects/{projectId} {
+      allow read: if isSignedIn() && (isOwner(resource.data.ownerId) || isAdmin());
+      allow create: if isSignedIn() && isValidProject(incoming()) && incoming().createdAt == request.time;
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (isOwner(existing().ownerId) && isValidProject(incoming()) && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description'])
+        ))
+      );
+      allow delete: if isSignedIn() && (isOwner(existing().ownerId) || isAdmin());
+    }
+
+    match /services/{serviceId} {
+      allow read: if isSignedIn() && (isOwner(resource.data.ownerId) || isAdmin());
+      allow create: if isSignedIn() && isValidService(incoming()) && incoming().createdAt == request.time &&
+                      exists(/databases/$(database)/documents/projects/$(incoming().projectId));
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (isOwner(existing().ownerId) && isValidService(incoming()) && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['name', 'status', 'repository', 'branch', 'port', 'domain', 'endpoint'])
+        ))
+      );
+      allow delete: if isSignedIn() && (isOwner(existing().ownerId) || isAdmin());
+    }
+
+    match /deployments/{deploymentId} {
+      allow read: if isSignedIn() && (isOwner(resource.data.ownerId) || isAdmin());
+      allow create: if isSignedIn() && isValidDeployment(incoming()) && incoming().createdAt == request.time &&
+                      exists(/databases/$(database)/documents/services/$(incoming().serviceId));
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (isOwner(existing().ownerId) && isValidDeployment(incoming()) && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'logs'])
+        ))
+      );
+      allow delete: if isSignedIn() && (isOwner(existing().ownerId) || isAdmin());
+    }
+
+    match /envvars/{varId} {
+      allow read: if isSignedIn() && (isOwner(resource.data.ownerId) || isAdmin());
+      allow create: if isSignedIn() && isValidEnvVar(incoming()) && incoming().createdAt == request.time &&
+                      exists(/databases/$(database)/documents/projects/$(incoming().projectId));
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (isOwner(existing().ownerId) && isValidEnvVar(incoming()) && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['key', 'value', 'isSecret'])
+        ))
+      );
+      allow delete: if isSignedIn() && (isOwner(existing().ownerId) || isAdmin());
+    }
+
+    match /metrics/{metricId} {
+      allow read: if isSignedIn() && (isOwner(resource.data.ownerId) || isAdmin());
+      allow create: if isSignedIn() && isValidMetric(incoming()) && incoming().updatedAt == request.time &&
+                      exists(/databases/$(database)/documents/services/$(incoming().serviceId));
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (isOwner(existing().ownerId) && isValidMetric(incoming()) && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['timestamps', 'cpu', 'ram', 'bandwidth', 'updatedAt'])
+        ))
+      );
+      allow delete: if isSignedIn() && (isOwner(existing().ownerId) || isAdmin());
+    }
+
+    match /community_messages/{messageId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidCommunityMessage(incoming()) && incoming().createdAt == request.time;
+      allow delete: if isAdmin() || (isSignedIn() && isOwner(existing().senderId));
+    }
+
+    match /transactions/{transId} {
+      allow read: if isSignedIn() && (isOwner(resource.data.userId) || isAdmin());
+      allow create: if isSignedIn() && isValidTransaction(incoming()) && incoming().createdAt == request.time;
+      allow update: if isAdmin();
+    }
+  }
+}
