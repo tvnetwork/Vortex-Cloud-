@@ -269,171 +269,36 @@ export default function Profile() {
               </div>
             )}
 
-            {!profile.githubUsername && isConfigured === true && (
-              <div className="space-y-4">
-                {/* Callback Mode Select with Premium Gradient styling */}
-                <div className="bg-[#0b1222]/60 border border-slate-800/80 rounded-2xl p-4 space-y-3 font-mono text-xs">
-                  <div className="flex items-center justify-between">
-                    <p className="font-bold text-[11px] text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
-                      <GitBranch className="h-3.5 w-3.5 text-cyan-400" />
-                      <span>Configure Callback Redirection</span>
-                    </p>
-                    <span className="text-[9px] bg-gradient-to-r from-cyan-500/10 to-indigo-500/10 text-cyan-300 border border-cyan-500/20 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
-                      GitHub App Setup
-                    </span>
-                  </div>
-                  <p className="text-[11px] leading-relaxed text-slate-400">
-                    Select which callback URL parameter is sent to your GitHub App authorize link. If you configured exactly one endpoint in your developer settings (like the Shared Preview URL), click **Omit Parameter** to let GitHub fallback automatically:
-                  </p>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-1">
-                    {[
-                      {
-                        id: 'auto',
-                        title: 'Auto-detect Route',
-                        desc: 'Detects and matches your current page origin dynamically',
-                      },
-                      {
-                        id: 'omit',
-                        title: 'Omit Parameter',
-                        desc: 'Recommends default App registration URL (Bypasses errors)',
-                        highlight: true
-                      },
-                      {
-                        id: 'dev',
-                        title: 'Force Sandbox URL',
-                        desc: 'Force strict developer sandbox environment callback',
-                      },
-                      {
-                        id: 'pre',
-                        title: 'Force Preview URL',
-                        desc: 'Force strict public shared preview environment callback',
-                      },
-                    ].map((opt) => {
-                      const isSelected = redirectUriMode === opt.id;
-                      return (
-                        <button
-                          key={opt.id}
-                          type="button"
-                          onClick={() => setRedirectUriMode(opt.id as any)}
-                          className={`relative text-left p-3 rounded-xl border transition-all duration-300 cursor-pointer overflow-hidden group ${
-                            isSelected
-                              ? 'bg-gradient-to-r from-cyan-500/10 to-indigo-500/10 border-cyan-500/50 shadow-[0_0_12px_rgba(6,182,212,0.15)]'
-                              : 'bg-slate-950/40 border-slate-900/80 hover:bg-[#0c1328]/55 hover:border-slate-800'
-                          }`}
-                        >
-                          {opt.highlight && (
-                            <span className="absolute top-0 right-0 text-[8px] bg-cyan-400 text-slate-950 font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-bl font-sans">
-                              BEST
-                            </span>
-                          )}
-                          <p className={`text-xs font-bold leading-tight ${isSelected ? 'text-cyan-400' : 'text-slate-200 group-hover:text-white'}`}>
-                            {opt.title}
-                          </p>
-                          <p className="text-[10px] text-slate-500 mt-0.5 leading-snug group-hover:text-slate-400">{opt.desc}</p>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
+            {!profile.githubUsername && (
+              <div className="space-y-4 pt-2">
                 <button
                   type="button"
                   disabled={isConnectingOAuth}
                   onClick={handleConnectOAuth}
-                  className="w-full bg-gradient-to-r from-cyan-950/30 to-indigo-950/30 border border-slate-800 hover:border-cyan-400/30 hover:bg-slate-800 text-cyan-400 hover:shadow-[0_0_15px_rgba(34,211,238,0.1)] font-bold py-3.5 px-4 rounded-xl font-mono text-xs transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full bg-gradient-to-r from-cyan-500/20 via-indigo-500/15 to-purple-500/20 border border-slate-700/50 hover:border-cyan-400 text-cyan-300 hover:text-white hover:shadow-[0_0_20px_rgba(34,211,238,0.25)] font-bold py-4 px-6 rounded-xl font-heading text-xs uppercase tracking-wide transition-all duration-300 flex items-center justify-center gap-2.5 cursor-pointer"
                 >
                   {isConnectingOAuth ? (
                     <>
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      <span>Authenticating Secure Pop-up...</span>
+                      <RefreshCw className="h-4 w-4 animate-spin text-cyan-400" />
+                      <span>Requesting secure connection...</span>
                     </>
                   ) : (
                     <>
-                      <Github className="h-4 w-4" />
+                      <Github className="h-5 w-5" />
                       <span>Authenticate with GitHub</span>
                     </>
                   )}
                 </button>
                 {oauthError && (
-                  <p className="text-[11px] text-rose-450 font-mono text-center">{oauthError}</p>
+                  <p className="text-[11px] text-rose-400 font-mono text-center bg-rose-500/5 border border-rose-500/15 p-3 rounded-xl mt-2 leading-relaxed">
+                    ⚠️ {oauthError}
+                  </p>
                 )}
-
-                <div className="bg-[#050810]/65 border border-slate-800/80 rounded-xl p-4 space-y-3 font-mono text-xs text-slate-400 font-sans">
-                  <p className="font-bold text-slate-355 flex items-center gap-1.5 uppercase text-[10px] tracking-wider text-amber-400 font-mono">
-                    <Laptop className="h-3.5 w-3.5" />
-                    <span>Active App Callback URL configuration</span>
+                {isConfigured === false && (
+                  <p className="text-[11px] text-amber-400 font-mono text-center bg-amber-500/5 border border-amber-500/15 p-4 rounded-xl mt-2 leading-relaxed">
+                    💡 <strong>GitHub Client Parameters Required</strong>: Please configure your <code>GITHUB_CLIENT_ID</code> and <code>GITHUB_CLIENT_SECRET</code> variables inside your AI Studio APP secrets configuration to connect.
                   </p>
-                  <p className="text-[11px] leading-relaxed text-slate-450">Current expected route matching selection:</p>
-                  <div className="bg-slate-900 px-3 py-2.5 rounded border border-slate-800 text-cyan-400 font-mono text-[10px] select-all break-all whitespace-pre-wrap leading-normal font-mono">
-                    {redirectUriMode === 'omit' ? 'Omit parameter (fall back to GitHub App configuration)' : 
-                     redirectUriMode === 'dev' ? 'https://ais-dev-23alz57aos6vikqk5vw7qo-83508965727.europe-west1.run.app/auth/callback' :
-                     redirectUriMode === 'pre' ? 'https://ais-pre-23alz57aos6vikqk5vw7qo-83508965727.europe-west1.run.app/auth/callback' :
-                     detectedCallbackUrl || (
-                       !window.location.hostname.endsWith('.run.app') && window.location.hostname !== 'localhost'
-                         ? `${window.location.origin}/api/github/callback`
-                         : `${window.location.origin}/auth/callback`
-                     )}
-                  </div>
-                  <p className="text-[10px] text-slate-500 leading-normal">
-                    💡 **Setup Hint**: You can define multiple callback URLs by putting them on new lines in your GitHub App settings (e.g. for both Dev and Shared Previews).
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {isConfigured === false && !profile.githubUsername && (
-              <div className="space-y-4 pt-2">
-                <div className="bg-[#050810]/80 border border-slate-800 rounded-xl p-4 space-y-3 font-mono text-xs text-slate-400">
-                  <div className="text-[11px] text-amber-400 font-bold uppercase tracking-wider flex items-center gap-2">
-                    <Laptop className="h-3.5 w-3.5" />
-                    <span>GitHub App Parameters Required</span>
-                  </div>
-                  <p className="text-[11px] leading-relaxed">Configure your custom GitHub App credentials inside AI Studio's settings to securely access and trigger deployment sources.</p>
-                  <div className="space-y-1.5 text-[10px] bg-slate-950/50 p-3 rounded-lg border border-slate-900 leading-relaxed overflow-y-auto">
-                    <p className="font-bold text-slate-305">📋 GitHub App Setup Instructions:</p>
-                    <p>1. Go to <a href="https://github.com/settings/apps" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">GitHub Apps Developer Settings</a> & click **New GitHub App** or edit your existing one.</p>
-                    <p>2. Set the **Callback URL** field (under the "Identifying and authorizing users" section) to the routes below. **Note**: Enter **both** URLs on separate lines in the field so both your Dev sandbox and Shared previews are allowed, avoiding the `redirect_uri` mismatch warning:</p>
-                    <div className="bg-slate-900 p-2.5 rounded border border-slate-800 text-slate-300 select-all font-mono whitespace-pre-wrap break-all my-1.5 text-[9px] leading-normal font-mono">
-{`https://ais-dev-23alz57aos6vikqk5vw7qo-83508965727.europe-west1.run.app/auth/callback
-https://ais-pre-23alz57aos6vikqk5vw7qo-83508965727.europe-west1.run.app/auth/callback${
-  !window.location.hostname.endsWith('.run.app') && window.location.hostname !== 'localhost'
-    ? `\n${window.location.origin}/api/github/callback`
-    : ''
-}`}
-                    </div>
-                    <p>3. Under **Permissions**, grant **Repository permissions** (e.g. Metadata: Read-only, Contents: Read-only) so user pipelines can read branch sources.</p>
-                    <p>4. Save changes and copy **Client ID** and generate a new **Client Secret**.</p>
-                    <p>5. Enter them in your AI Studio app secrets settings:</p>
-                    <p className="text-cyan-400">GITHUB_CLIENT_ID</p>
-                    <p className="text-cyan-400">GITHUB_CLIENT_SECRET</p>
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-slate-800">
-                  <p className="text-[10px] text-slate-500 font-mono mb-2 uppercase tracking-wide">Developer Sandbox Manual Mapping</p>
-                  <form onSubmit={handleUpdateGithub} className="flex gap-3">
-                    <div className="relative flex-grow">
-                      <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500 font-mono text-xs font-bold">@</span>
-                      <input
-                        type="text"
-                        required
-                        placeholder="github-username"
-                        value={gitUsername}
-                        onChange={(e) => setGitUsername(e.target.value.replace(/[^a-zA-Z0-9\-]/g, ''))}
-                        className="w-full bg-[#050810] border border-slate-800 rounded-xl pl-7 pr-4 py-3 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/40 font-mono"
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={isUpdatingGit || !gitUsername.trim()}
-                      className="bg-slate-900 border border-slate-800 hover:border-slate-700 hover:bg-slate-850 text-cyan-400 font-bold px-5 py-3 rounded-xl font-mono text-xs transition-colors flex items-center gap-1 shrink-0 cursor-pointer"
-                    >
-                      {isUpdatingGit ? <RefreshCw className="h-4 w-4 animate-spin" /> : successGit ? <CheckCircle className="h-4 w-4 text-emerald-400" /> : 'Connect'}
-                    </button>
-                  </form>
-                </div>
+                )}
               </div>
             )}
           </div>
