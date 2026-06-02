@@ -5,12 +5,42 @@ import ogs from "open-graph-scraper-lite";
 
 const app = express();
 
+// Store for pending OAuth connections mapped by Firebase UID
+const pendingOAuthConnections = new Map<string, { username: string; token: string; timestamp: number }>();
+
+// Clean up old pending connections every 5 minutes to prevent memory leaks
+setInterval(() => {
+  const now = Date.now();
+  for (const [uid, conn] of pendingOAuthConnections.entries()) {
+    if (now - conn.timestamp > 10 * 60 * 1000) { // 10 minutes timeout
+      pendingOAuthConnections.delete(uid);
+    }
+  }
+}, 5 * 60 * 1000);
+
 app.use(cors());
 app.use(express.json());
 
 // API Routes
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
+});
+
+// Polling connection status endpoint
+app.get("/api/auth/github/status", (req, res) => {
+  const uid = req.query.uid as string;
+  if (!uid) {
+    return res.status(400).json({ error: "uid parameter is required" });
+  }
+
+  const connection = pendingOAuthConnections.get(uid);
+  if (connection) {
+    // Consume and delete
+    pendingOAuthConnections.delete(uid);
+    return res.json({ connected: true, githubUsername: connection.username, githubAccessToken: connection.token });
+  }
+
+  res.json({ connected: false });
 });
 
 // GitHub OAuth authorization URL endpoint
@@ -23,6 +53,7 @@ app.get("/api/auth/github/url", (req, res) => {
   }
 
   const customRedirectUri = req.query.redirect_uri as string;
+  const uid = req.query.uid as string;
 
   let appUrl = process.env.APP_URL && process.env.APP_URL !== "MY_APP_URL" ? process.env.APP_URL.replace(/\/$/, "") : "";
   if (!appUrl) {
@@ -46,7 +77,8 @@ app.get("/api/auth/github/url", (req, res) => {
   // Securely package the state parameter
   const stateObj = {
     rand: Math.random().toString(36).substring(2, 15),
-    ruri: redirectUri || "omit"
+    ruri: redirectUri || "omit",
+    uid: uid || ""
   };
   const stateStr = Buffer.from(JSON.stringify(stateObj)).toString("base64");
 
@@ -102,6 +134,7 @@ app.get(["/auth/callback", "/auth/callback/", "/api/github/callback", "/api/auth
     
     let redirectUri: string | undefined = undefined;
     let stateDecoded = false;
+    let uidFromState: string | undefined = undefined;
 
     if (state) {
       try {
@@ -109,6 +142,9 @@ app.get(["/auth/callback", "/auth/callback/", "/api/github/callback", "/api/auth
         stateDecoded = true;
         if (decoded && decoded.ruri && decoded.ruri !== "omit") {
           redirectUri = decoded.ruri;
+        }
+        if (decoded && decoded.uid) {
+          uidFromState = decoded.uid;
         }
       } catch (e) {
         console.warn("Could not decode state, falling back to request-based redirect uri", e);
@@ -167,6 +203,16 @@ app.get(["/auth/callback", "/auth/callback/", "/api/github/callback", "/api/auth
 
     const githubUser = await userResponse.json() as { login: string; id: number; name?: string; avatar_url?: string };
     const githubUsername = githubUser.login;
+
+    // Register pending connection for status polling
+    if (uidFromState) {
+      pendingOAuthConnections.set(uidFromState, {
+        username: githubUsername,
+        token: accessToken,
+        timestamp: Date.now()
+      });
+      console.log(`OAuth Callback registered state connection for uid: ${uidFromState} -> githubUsername: ${githubUsername}`);
+    }
 
     // Render successful callback HTML to sync token and close popup
     res.send(`

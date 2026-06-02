@@ -25,6 +25,7 @@ export default function Profile() {
   const [isConfigured, setIsConfigured] = useState<boolean | null>(null);
   const [detectedCallbackUrl, setDetectedCallbackUrl] = useState<string>('');
   const [redirectUriMode, setRedirectUriMode] = useState<'auto' | 'dev' | 'pre' | 'omit'>('auto');
+  const pollIntervalRef = React.useRef<any>(null);
 
   React.useEffect(() => {
     // Check configuration status initially
@@ -73,12 +74,20 @@ export default function Profile() {
     };
 
     window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+    };
   }, []);
 
   const handleConnectOAuth = async () => {
     setIsConnectingOAuth(true);
     setOauthError(null);
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+    }
     try {
       let ruri = "";
       if (redirectUriMode === "omit") {
@@ -89,7 +98,11 @@ export default function Profile() {
         ruri = "https://ais-pre-23alz57aos6vikqk5vw7qo-83508965727.europe-west1.run.app/auth/callback";
       }
 
-      const fetchUrl = ruri ? `/api/auth/github/url?redirect_uri=${encodeURIComponent(ruri)}` : "/api/auth/github/url";
+      const params = new URLSearchParams();
+      if (ruri) params.append("redirect_uri", ruri);
+      if (user?.uid) params.append("uid", user.uid);
+
+      const fetchUrl = `/api/auth/github/url?${params.toString()}`;
       const res = await fetch(fetchUrl);
       const data = await res.json();
       if (!data.configured) {
@@ -108,7 +121,60 @@ export default function Profile() {
       if (!authWindow) {
         setOauthError('Popup blocker prevented authentication. Please allow popups.');
         setIsConnectingOAuth(false);
+        return;
       }
+
+      // Start polling for connection status mapping
+      let attempts = 0;
+      const maxAttempts = 120; // 3 minutes total
+      pollIntervalRef.current = setInterval(async () => {
+        attempts++;
+        if (attempts > maxAttempts) {
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+          }
+          setIsConnectingOAuth(false);
+          setOauthError('Authentication connection timed out. Please try again.');
+          return;
+        }
+
+        try {
+          const statusRes = await fetch(`/api/auth/github/status?uid=${user.uid}`);
+          if (statusRes.ok) {
+            const statusData = await statusRes.json();
+            if (statusData.connected) {
+              if (pollIntervalRef.current) {
+                clearInterval(pollIntervalRef.current);
+                pollIntervalRef.current = null;
+              }
+
+              const username = statusData.githubUsername;
+              const accessToken = statusData.githubAccessToken;
+
+              if (accessToken) {
+                localStorage.setItem('github_access_token', accessToken);
+              }
+
+              await updateGithub(username);
+              setGitUsername(username);
+              setSuccessGit(true);
+              setIsConnectingOAuth(false);
+
+              try {
+                if (authWindow && !authWindow.closed) {
+                  authWindow.close();
+                }
+              } catch (_) {}
+
+              setTimeout(() => setSuccessGit(false), 3000);
+            }
+          }
+        } catch (pollErr) {
+          console.error("Error polling connection status:", pollErr);
+        }
+      }, 1500);
+
     } catch (err: any) {
       console.error(err);
       setOauthError('Failed to fetch authentication endpoint');
