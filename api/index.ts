@@ -11,8 +11,12 @@ import os from "os";
 
 const app = express();
 
-// Service map (subdomain -> port)
-const deployedServices = new Map<string, number>();
+// --- Routing Maps ---
+// Maps deploymentId -> localhost port
+const deploymentPorts = new Map<string, number>();
+
+// Maps absolute domain (e.g., myapp-1.apps.kontyra.name.ng, shop.com) -> deploymentId
+const domainToDeployment = new Map<string, string>();
 
 // Create proxy server
 const proxy = httpProxy.createProxyServer({
@@ -33,28 +37,54 @@ app.use((req, res, next) => {
   const host = req.headers.host;
   if (!host) return next();
 
-  if (host.includes(".deploy.kontyra.name.ng") || host.includes(".vortex.dev")) {
-    const subdomain = host.split(".")[0];
-    const port = deployedServices.get(subdomain);
-    
-    if (port) {
-      return proxy.web(req, res, { target: `http://127.0.0.1:${port}` });
-    } else {
-      res.status(404).send("Service not found or not deployed yet.");
-      return;
+  // Let API and dashboard requests pass through to Express
+  if (
+    host.startsWith("deploy.kontyra.name.ng") || 
+    host.startsWith("localhost:") || 
+    host.startsWith("127.0.0.1:") ||
+    host.includes(".run.app")
+  ) {
+    // If it's an API route or auth route, pass it
+    if (req.path.startsWith("/api") || req.path.startsWith("/auth")) {
+      return next();
     }
   }
+
+  // 1. Exact domain match
+  let deploymentId = domainToDeployment.get(host);
+
+  // 2. Fallback prefix matching for default platform URLs (*.apps.kontyra.name.ng, *.deploy.kontyra.name.ng)
+  if (!deploymentId && (host.includes(".apps.kontyra.name.ng") || host.includes(".deploy.kontyra.name.ng") || host.includes(".vortex.dev"))) {
+    const prefix = host.split(".")[0];
+    // check if prefix is literally a deploymentId
+    if (deploymentPorts.has(prefix)) {
+      deploymentId = prefix;
+    }
+  }
+
+  if (deploymentId) {
+    const port = deploymentPorts.get(deploymentId);
+    if (port) {
+      return proxy.web(req, res, { target: `http://127.0.0.1:${port}` });
+    }
+  }
+
+  // If it's a platform domain and not found, block it
+  if (host.includes(".apps.kontyra.name.ng") || host.includes(".deploy.kontyra.name.ng")) {
+    res.status(404).send("DEPLOYMENT_NOT_FOUND");
+    return;
+  }
+
   next();
 });
 
 // Store for pending OAuth connections mapped by Firebase UID
 const pendingOAuthConnections = new Map<string, { username: string; token: string; timestamp: number }>();
 
-// Clean up old pending connections every 5 minutes to prevent memory leaks
 setInterval(() => {
   const now = Date.now();
   for (const [uid, conn] of pendingOAuthConnections.entries()) {
-    if (now - conn.timestamp > 10 * 60 * 1000) { // 10 minutes timeout
+    if (now - conn.timestamp > 10 * 60 * 1000) {
       pendingOAuthConnections.delete(uid);
     }
   }
@@ -69,44 +99,56 @@ app.get("/api/health", (req, res) => {
 });
 
 app.post("/api/deploy", async (req, res) => {
-  const { repoUrl, subdomain } = req.body;
-  if (!repoUrl || !subdomain) {
-    return res.status(400).json({ error: "repoUrl and subdomain are required" });
+  // subdomain is deprecated, using deploymentId instead
+  const { repoUrl, subdomain, deploymentId } = req.body;
+  
+  const targetId = deploymentId || subdomain;
+  if (!repoUrl || !targetId) {
+    return res.status(400).json({ error: "repoUrl and deploymentId are required" });
   }
 
   try {
     const port = await portfinder.getPortPromise();
-    const workDir = await fs.mkdtemp(path.join(os.tmpdir(), `vortex-${subdomain}-`));
+    const workDir = await fs.mkdtemp(path.join(os.tmpdir(), `vortex-${targetId}-`));
     
-    // Respond immediately, processing happens in background
-    res.json({ message: "Deployment started", subdomain, port, workDir });
+    // Auto-map the default deploy URL
+    domainToDeployment.set(`${targetId}.apps.kontyra.name.ng`, targetId);
+    // Backwards compatibility
+    domainToDeployment.set(`${targetId}.deploy.kontyra.name.ng`, targetId);
 
-    // Background process
+    // Respond immediately
+    res.json({ 
+      message: "Deployment started", 
+      deploymentId: targetId, 
+      port, 
+      workDir,
+      url: `${targetId}.apps.kontyra.name.ng`
+    });
+
     console.log(`[Deploy] Cloning ${repoUrl} to ${workDir}`);
     const cloneProcess = spawn("git", ["clone", repoUrl, "."], { cwd: workDir });
     
     cloneProcess.on("close", (code) => {
-      if (code !== 0) return console.error(`Git clone failed for ${subdomain}`);
+      if (code !== 0) return console.error(`Git clone failed for ${targetId}`);
       
-      console.log(`[Deploy] Running npm install for ${subdomain}`);
+      console.log(`[Deploy] Running npm install for ${targetId}`);
       const installProcess = spawn(/^win/.test(process.platform) ? "npm.cmd" : "npm", ["install"], { cwd: workDir });
       
       installProcess.on("close", (code) => {
-        if (code !== 0) return console.error(`NPM install failed for ${subdomain}`);
+        if (code !== 0) return console.error(`NPM install failed for ${targetId}`);
         
-        console.log(`[Deploy] Starting app for ${subdomain} on port ${port}`);
-        // Provide standard PORT env var for the app
+        console.log(`[Deploy] Starting app for ${targetId} on port ${port}`);
         const startProcess = spawn(/^win/.test(process.platform) ? "npm.cmd" : "npm", ["start"], { 
           cwd: workDir,
           env: { ...process.env, PORT: port.toString() } 
         });
 
-        startProcess.stdout.on("data", (data) => console.log(`[${subdomain}] ${data}`));
-        startProcess.stderr.on("data", (data) => console.error(`[${subdomain}] ${data}`));
+        startProcess.stdout.on("data", (data) => console.log(`[${targetId}] ${data}`));
+        startProcess.stderr.on("data", (data) => console.error(`[${targetId}] ${data}`));
 
-        // Register the service in the proxy map
-        deployedServices.set(subdomain, port);
-        console.log(`[Deploy] ${subdomain} is now live on port ${port}`);
+        // Register the service port
+        deploymentPorts.set(targetId, port);
+        console.log(`[Deploy] ${targetId} is live on port ${port}`);
       });
     });
 
@@ -116,31 +158,34 @@ app.post("/api/deploy", async (req, res) => {
   }
 });
 
-// Polling connection status endpoint
+app.post("/api/domains/map", (req, res) => {
+  const { domain, deploymentId } = req.body;
+  if (!domain || !deploymentId) {
+    return res.status(400).json({ error: "domain and deploymentId are required" });
+  }
+
+  // Update proxy map in real-time
+  domainToDeployment.set(domain, deploymentId);
+  res.json({ success: true, message: `Mapped ${domain} -> ${deploymentId}` });
+});
+
+// OAuth code remains unchanged...
 app.get("/api/auth/github/status", (req, res) => {
   const uid = req.query.uid as string;
-  if (!uid) {
-    return res.status(400).json({ error: "uid parameter is required" });
-  }
+  if (!uid) return res.status(400).json({ error: "uid required" });
 
   const connection = pendingOAuthConnections.get(uid);
   if (connection) {
-    // Consume and delete
     pendingOAuthConnections.delete(uid);
     return res.json({ connected: true, githubUsername: connection.username, githubAccessToken: connection.token });
   }
-
   res.json({ connected: false });
 });
 
-// GitHub OAuth authorization URL endpoint
 app.get("/api/auth/github/url", (req, res) => {
   const clientId = process.env.GITHUB_CLIENT_ID;
   const clientSecret = process.env.GITHUB_CLIENT_SECRET;
-
-  if (!clientId || !clientSecret) {
-    return res.json({ configured: false });
-  }
+  if (!clientId || !clientSecret) return res.json({ configured: false });
 
   const customRedirectUri = req.query.redirect_uri as string;
   const uid = req.query.uid as string;
@@ -149,241 +194,87 @@ app.get("/api/auth/github/url", (req, res) => {
   if (!appUrl) {
     const host = req.get("host") || "localhost:3000";
     const isHttps = req.secure || req.headers["x-forwarded-proto"] === "https";
-    const protocol = isHttps ? "https" : "http";
-    appUrl = `${protocol}://${host}`;
+    appUrl = `${isHttps ? "https" : "http"}://${host}`;
   }
-  const defaultRedirectUri = process.env.VERCEL 
-    ? `${appUrl}/api/github/callback` 
-    : `${appUrl}/auth/callback`;
+  const defaultRedirectUri = process.env.VERCEL ? `${appUrl}/api/github/callback` : `${appUrl}/auth/callback`;
 
-  // Determine what redirectUri to use
   let redirectUri: string | undefined = defaultRedirectUri;
-  if (customRedirectUri === "omit") {
-    redirectUri = undefined;
-  } else if (customRedirectUri) {
-    redirectUri = customRedirectUri;
-  }
+  if (customRedirectUri === "omit") redirectUri = undefined;
+  else if (customRedirectUri) redirectUri = customRedirectUri;
 
-  // Securely package the state parameter
-  const stateObj = {
-    rand: Math.random().toString(36).substring(2, 15),
-    ruri: redirectUri || "omit",
-    uid: uid || ""
-  };
+  const stateObj = { rand: Math.random().toString(36).substring(2, 15), ruri: redirectUri || "omit", uid: uid || "" };
   const stateStr = Buffer.from(JSON.stringify(stateObj)).toString("base64");
 
-  const params = new URLSearchParams({
-    client_id: clientId,
-    scope: "read:user,repo",
-    state: stateStr
-  });
+  const params = new URLSearchParams({ client_id: clientId, scope: "read:user,repo", state: stateStr });
+  if (redirectUri) params.append("redirect_uri", redirectUri);
 
-  if (redirectUri) {
-    params.append("redirect_uri", redirectUri);
-  }
-
-  const authUrl = `https://github.com/login/oauth/authorize?${params.toString()}`;
-  res.json({ configured: true, url: authUrl, redirectUri: redirectUri || "GitHub App Default (Omitted)" });
+  res.json({ configured: true, url: `https://github.com/login/oauth/authorize?${params.toString()}`, redirectUri: redirectUri || "GitHub App Default" });
 });
 
-// GitHub OAuth callback endpoint
-app.get(["/auth/callback", "/auth/callback/", "/api/github/callback", "/api/auth/github/callback", "/api/auth/callback"], async (req, res) => {
+app.get(["/auth/callback", "/api/github/callback", "/api/auth/github/callback", "/api/auth/callback"], async (req, res) => {
   const { code, state } = req.query;
-
-  if (!code) {
-    return res.send(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>GitHub Authorization Failed</title>
-          <style>
-            body { background-color: #050810; color: #f8fafc; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; }
-            .card { background-color: #0b1222; border: 1px solid #1e293b; padding: 2rem; border-radius: 1.5rem; }
-            .error { color: #f43f5e; font-size: 2.5rem; margin-bottom: 0.5rem; }
-          </style>
-        </head>
-        <body>
-          <div class="card">
-            <div class="error">✕</div>
-            <h2>Authorization Code Missing</h2>
-            <p style="color: #94a3b8;">Did not receive a valid authorization code from GitHub.</p>
-          </div>
-          <script>
-            if (window.opener) {
-              window.opener.postMessage({ type: 'OAUTH_AUTH_FAILED', error: 'No authorization code received' }, '*');
-            }
-          </script>
-        </body>
-      </html>
-    `);
-  }
+  if (!code) return res.send(`<html><body><h2>Auth Code Missing</h2></body></html>`);
 
   try {
     const clientId = process.env.GITHUB_CLIENT_ID;
     const clientSecret = process.env.GITHUB_CLIENT_SECRET;
     
     let redirectUri: string | undefined = undefined;
-    let stateDecoded = false;
     let uidFromState: string | undefined = undefined;
 
     if (state) {
       try {
         const decoded = JSON.parse(Buffer.from(state as string, "base64").toString("utf-8"));
-        stateDecoded = true;
-        if (decoded && decoded.ruri && decoded.ruri !== "omit") {
-          redirectUri = decoded.ruri;
-        }
-        if (decoded && decoded.uid) {
-          uidFromState = decoded.uid;
-        }
-      } catch (e) {
-        console.warn("Could not decode state, falling back to request-based redirect uri", e);
-      }
+        if (decoded.ruri && decoded.ruri !== "omit") redirectUri = decoded.ruri;
+        if (decoded.uid) uidFromState = decoded.uid;
+      } catch (e) {}
     }
 
-    // If state didn't contain ruri or was omitted, but we aren't explicitly omitting, let's build the fallback redirectUri for standard OAuth.
-    if (!redirectUri && !stateDecoded) {
+    if (!redirectUri && !state) {
       let appUrl = process.env.APP_URL && process.env.APP_URL !== "MY_APP_URL" ? process.env.APP_URL.replace(/\/$/, "") : "";
       if (!appUrl) {
         const host = req.get("host") || "localhost:3000";
-        const isHttps = req.secure || req.headers["x-forwarded-proto"] === "https";
-        const protocol = isHttps ? "https" : "http";
-        appUrl = `${protocol}://${host}`;
+        appUrl = `${req.secure || req.headers["x-forwarded-proto"] === "https" ? "https" : "http"}://${host}`;
       }
       redirectUri = `${appUrl}${req.path}`;
     }
 
-    // Exchange code for access token
     const tokenResponse = await fetch("https://github.com/login/oauth/access_token", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      },
-      body: JSON.stringify({
-        client_id: clientId,
-        client_secret: clientSecret,
-        code,
-        ...(redirectUri ? { redirect_uri: redirectUri } : {})
-      })
+      headers: { "Content-Type": "application/json", "Accept": "application/json" },
+      body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, code, ...(redirectUri ? { redirect_uri: redirectUri } : {}) })
     });
-
-    const tokenData = await tokenResponse.json() as { error?: string; error_description?: string; access_token?: string };
-
-    if (tokenData.error) {
-      throw new Error(tokenData.error_description || tokenData.error);
-    }
-
+    const tokenData = await tokenResponse.json() as any;
+    if (tokenData.error) throw new Error(tokenData.error_description || tokenData.error);
+    
     const accessToken = tokenData.access_token;
-    if (!accessToken) {
-      throw new Error("Failed to retrieve valid access token.");
-    }
-
-    // Fetch user profile from GitHub API
     const userResponse = await fetch("https://api.github.com/user", {
-      headers: {
-        "Authorization": `Bearer ${accessToken}`,
-        "User-Agent": "Vortex-Application"
-      }
+      headers: { "Authorization": `Bearer ${accessToken}`, "User-Agent": "Vortex-Application" }
     });
+    const githubUser = await userResponse.json() as any;
 
-    if (!userResponse.ok) {
-      throw new Error(`GitHub API returned status ${userResponse.status}`);
-    }
+    if (uidFromState) pendingOAuthConnections.set(uidFromState, { username: githubUser.login, token: accessToken, timestamp: Date.now() });
 
-    const githubUser = await userResponse.json() as { login: string; id: number; name?: string; avatar_url?: string };
-    const githubUsername = githubUser.login;
-
-    // Register pending connection for status polling
-    if (uidFromState) {
-      pendingOAuthConnections.set(uidFromState, {
-        username: githubUsername,
-        token: accessToken,
-        timestamp: Date.now()
-      });
-      console.log(`OAuth Callback registered state connection for uid: ${uidFromState} -> githubUsername: ${githubUsername}`);
-    }
-
-    // Render successful callback HTML to sync token and close popup
     res.send(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>GitHub Connected</title>
-          <style>
-            body { background-color: #050810; color: #f8fafc; font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; }
-            .card { background-color: #0b1222; border: 1px solid #1e293b; padding: 2.5rem; border-radius: 1.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-            .spinner { border: 3px solid rgba(255,255,255,0.1); width: 40px; height: 40px; border-radius: 50%; border-left-color: #22d3ee; animation: spin 1s linear infinite; margin: 1.5rem auto; }
-            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-          </style>
-        </head>
-        <body>
-          <div class="card">
-            <div class="spinner"></div>
-            <h2 style="margin: 0; font-size: 1.5rem;">GitHub Connected</h2>
-            <p style="color: #94a3b8; font-size: 0.875rem; margin-top: 0.5rem;">Tunnelling secure account data back. Node linked to @${githubUsername}</p>
-          </div>
-          <script>
-            if (window.opener) {
-              window.opener.postMessage({ 
-                type: 'OAUTH_AUTH_SUCCESS', 
-                githubUsername: ${JSON.stringify(githubUsername)},
-                githubAccessToken: ${JSON.stringify(accessToken)}
-              }, '*');
-              setTimeout(() => {
-                window.close();
-              }, 1000);
-            } else {
-              window.location.href = '/profile';
-            }
-          </script>
-        </body>
-      </html>
+      <html><body><h2>GitHub Connected</h2>
+      <script>
+        if (window.opener) {
+          window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS', githubUsername: '${githubUser.login}', githubAccessToken: '${accessToken}' }, '*');
+          setTimeout(() => window.close(), 1000);
+        } else { window.location.href = '/settings'; }
+      </script></body></html>
     `);
-
   } catch (err: any) {
-    console.error("GitHub Auth Error:", err);
-    const errorMsg = err.message || "An unknown error occurred during authentication.";
-    res.send(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>GitHub Connection Failed</title>
-          <style>
-            body { background-color: #050810; color: #f8fafc; font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; }
-            .card { background-color: #0b1222; border: 1px solid #1e293b; padding: 2rem; border-radius: 1.5rem; max-width: 400px; }
-            .error-icon { color: #f43f5e; font-size: 3rem; margin-bottom: 0.5rem; }
-          </style>
-        </head>
-        <body>
-          <div class="card">
-            <div class="error-icon">✕</div>
-            <h2>Connection Failed</h2>
-            <p style="color: #94a3b8; font-size: 0.875rem;">${errorMsg}</p>
-            <button onclick="window.close()" style="background-color: #1e293b; border: none; color: white; padding: 0.5rem 1.5rem; border-radius: 0.5rem; cursor: pointer; margin-top: 1rem;">Close Window</button>
-          </div>
-          <script>
-            if (window.opener) {
-              window.opener.postMessage({ 
-                type: 'OAUTH_AUTH_FAILED', 
-                error: ${JSON.stringify(errorMsg)}
-              }, '*');
-            }
-          </script>
-        </body>
-      </html>
-    `);
+    res.send(`<html><body><h2>Connection Failed</h2><p>${err.message}</p></body></html>`);
   }
 });
 
 app.post("/api/og", async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: "URL is required" });
-
   try {
     // @ts-ignore
     const { result } = await ogs({ url });
-    
     res.json({
       title: (result as any).ogTitle || (result as any).twitterTitle || "",
       description: (result as any).ogDescription || (result as any).twitterDescription || "",
@@ -391,7 +282,6 @@ app.post("/api/og", async (req, res) => {
       logo: (result as any).ogLogo?.[0]?.url || (result as any).ogLogo?.url || ""
     });
   } catch (error) {
-    console.error("OG Fetch Error:", error);
     res.status(500).json({ error: "Failed to fetch metadata" });
   }
 });

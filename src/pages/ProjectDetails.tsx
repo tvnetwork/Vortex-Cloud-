@@ -26,7 +26,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { Project, Service, EnvVar } from '../types';
+import { Project, Deployment, EnvVar } from '../types';
 
 export default function ProjectDetails() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -35,7 +35,7 @@ export default function ProjectDetails() {
   const location = useLocation();
 
   const [project, setProject] = useState<Project | null>(null);
-  const [services, setServices] = useState<Service[]>([]);
+  const [deployments, setServices] = useState<Deployment[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,16 +52,16 @@ export default function ProjectDetails() {
       handleFirestoreError(err, OperationType.GET, `projects/${projectId}`);
     });
 
-    const qServices = query(collection(db, 'services'), where('projectId', '==', projectId), where('ownerId', '==', user.uid));
+    const qServices = query(collection(db, 'deployments'), where('projectId', '==', projectId), where('ownerId', '==', user.uid));
     const unsubServices = onSnapshot(qServices, (snap) => {
-      const servs: Service[] = [];
+      const servs: Deployment[] = [];
       snap.forEach((docSnap) => {
-        servs.push({ id: docSnap.id, ...docSnap.data() } as Service);
+        servs.push({ id: docSnap.id, ...docSnap.data() } as Deployment);
       });
       setServices(servs);
       setLoading(false);
     }, (err) => {
-      handleFirestoreError(err, OperationType.LIST, 'services');
+      handleFirestoreError(err, OperationType.LIST, 'deployments');
     });
 
     return () => {
@@ -77,12 +77,13 @@ export default function ProjectDetails() {
     );
   }
 
-  const mainService = services.find(s => s.type === 'web_service' || s.type === 'static_site') || services[0];
+  const mainService = deployments.find(s => s.type === 'web_deployment' || s.type === 'static_site') || deployments[0];
   const displayDomain = mainService ? `${mainService.name}.deploy.kontyra.name.ng` : `${project.name}.kontyra.name.ng`;
 
   const tabs = [
     { name: 'Overview', path: `/projects/${projectId}`, exact: true },
     { name: 'Deployments', path: `/projects/${projectId}/deployments` },
+    { name: 'Previews', path: `/projects/${projectId}/previews` },
     { name: 'Domains', path: `/projects/${projectId}/domains` },
     { name: 'Environment', path: `/projects/${projectId}/environment` },
     { name: 'Logs', path: `/projects/${projectId}/logs` },
@@ -163,11 +164,12 @@ export default function ProjectDetails() {
 
       {/* Content */}
       <Routes>
-        <Route path="/" element={<OverviewTab project={project} services={services} />} />
-        <Route path="/deployments" element={<DeploymentsTab services={services} />} />
-        <Route path="/domains" element={<DomainsTab />} />
+        <Route path="/" element={<OverviewTab project={project} deployments={deployments} />} />
+        <Route path="/deployments" element={<DeploymentsTab project={project} deployments={deployments} />} />
+        <Route path="/previews" element={<PreviewsTab deployments={deployments} />} />
+        <Route path="/domains" element={<DomainsTab project={project} deployments={deployments} />} />
         <Route path="/environment" element={<EnvironmentTab projectId={projectId} />} />
-        <Route path="/logs" element={<LogsTab services={services} />} />
+        <Route path="/logs" element={<LogsTab deployments={deployments} />} />
         <Route path="/analytics" element={<AnalyticsTab />} />
         <Route path="/settings" element={<SettingsTab project={project} />} />
       </Routes>
@@ -177,7 +179,7 @@ export default function ProjectDetails() {
 
 // --- Tab Components ---
 
-function OverviewTab({ project, services }: { project: Project, services: Service[] }) {
+function OverviewTab({ project, deployments }: { project: Project, deployments: Deployment[] }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div className="lg:col-span-2 space-y-6">
@@ -189,24 +191,24 @@ function OverviewTab({ project, services }: { project: Project, services: Servic
             </h2>
           </div>
           
-          {services.length === 0 ? (
+          {deployments.length === 0 ? (
             <div className="p-12 text-center text-zinc-500">
               No deployments yet.
             </div>
           ) : (
             <div className="divide-y divide-zinc-800">
-              {services.slice(0, 3).map((service) => (
-                <div key={service.id} className="p-6 flex items-center justify-between">
+              {deployments.slice(0, 3).map((deployment) => (
+                <div key={deployment.id} className="p-6 flex items-center justify-between">
                   <div>
-                    <Link to={`/service/${service.id}`} className="font-medium text-white hover:underline">
-                      {service.name}
+                    <Link to={`/deployment/${deployment.id}`} className="font-medium text-white hover:underline">
+                      {deployment.name}
                     </Link>
-                    <p className="text-sm text-zinc-400 mt-1">{service.domain}</p>
+                    <p className="text-sm text-zinc-400 mt-1">{deployment.domain}</p>
                   </div>
                   <span className={`text-xs uppercase font-medium px-2 py-0.5 rounded-full ${
-                    service.status === 'active' ? 'bg-green-500/10 text-green-500' : 'bg-zinc-800 text-zinc-400'
+                    deployment.status === 'active' ? 'bg-green-500/10 text-green-500' : 'bg-zinc-800 text-zinc-400'
                   }`}>
-                    {service.status}
+                    {deployment.status}
                   </span>
                 </div>
               ))}
@@ -239,33 +241,54 @@ function OverviewTab({ project, services }: { project: Project, services: Servic
   );
 }
 
-function DeploymentsTab({ services }: { services: Service[] }) {
+function DeploymentsTab({ project, deployments }: { project: Project, deployments: Deployment[] }) {
+  const { user } = useAuth();
+  
+  const handlePromote = async (deployment: Deployment) => {
+    if (!user) return;
+    try {
+      const prodDomain = `${project.name}.kontyra.app`; // Simplified production alias
+      await fetch('/api/domains/map', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain: prodDomain, deploymentId: deployment.id })
+      });
+      alert(`Promoted ${deployment.name} to production (${prodDomain})!`);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to promote to production.");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-medium text-white">Deployment History</h2>
       </div>
       <div className="bg-black border border-zinc-800 rounded-lg overflow-hidden">
-        {services.length === 0 ? (
+        {deployments.length === 0 ? (
           <div className="p-12 text-center text-zinc-500">No deployments found.</div>
         ) : (
           <div className="divide-y divide-zinc-800">
-            {services.map((service) => (
-              <div key={service.id} className="p-4 sm:px-6 flex items-center justify-between hover:bg-zinc-900/50 transition-colors">
+            {deployments.map((deployment) => (
+              <div key={deployment.id} className="p-4 sm:px-6 flex items-center justify-between hover:bg-zinc-900/50 transition-colors">
                 <div>
-                  <Link to={`/service/${service.id}`} className="font-medium text-white hover:underline">
-                    {service.name}
+                  <Link to={`/deployment/${deployment.id}`} className="font-medium text-white hover:underline">
+                    {deployment.name}
                   </Link>
-                  <p className="text-sm text-zinc-400 mt-0.5">{service.domain}</p>
+                  <p className="text-sm text-zinc-400 mt-0.5">{deployment.domain || `${deployment.id}.apps.kontyra.name.ng`}</p>
                 </div>
                 <div className="flex items-center gap-4">
                   <span className={`text-xs uppercase font-medium px-2 py-0.5 rounded-full ${
-                    service.status === 'active' ? 'bg-green-500/10 text-green-500' : 'bg-zinc-800 text-zinc-400'
+                    deployment.status === 'active' ? 'bg-green-500/10 text-green-500' : 'bg-zinc-800 text-zinc-400'
                   }`}>
-                    {service.status}
+                    {deployment.status}
                   </span>
-                  <button className="text-sm text-zinc-400 hover:text-white transition-colors">
-                    Rollback
+                  <button onClick={() => handlePromote(deployment)} className="text-sm text-zinc-400 hover:text-white transition-colors bg-zinc-900 px-3 py-1.5 rounded-md border border-zinc-800">
+                    Promote to Prod
+                  </button>
+                  <button onClick={() => handlePromote(deployment)} className="text-sm text-red-400 hover:text-red-300 transition-colors">
+                    Rollback Here
                   </button>
                 </div>
               </div>
@@ -277,30 +300,140 @@ function DeploymentsTab({ services }: { services: Service[] }) {
   );
 }
 
-function DomainsTab() {
+function PreviewsTab({ deployments }: { deployments: Deployment[] }) {
+  // Previews are usually branch deployments
+  const previews = deployments.filter(s => s.branch && s.branch !== 'main');
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-lg font-medium text-white">Preview Deployments</h2>
+        <button className="bg-white text-black text-sm font-medium px-4 py-2 rounded-md hover:bg-zinc-200">
+          Create Preview
+        </button>
+      </div>
+      <div className="bg-black border border-zinc-800 rounded-lg overflow-hidden">
+        {previews.length === 0 ? (
+          <div className="p-12 text-center text-zinc-500">
+            <p className="mb-2">No preview deployments.</p>
+            <p className="text-sm">Open a Pull Request to automatically generate a preview URL.</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-zinc-800">
+            {previews.map((deployment) => (
+              <div key={deployment.id} className="p-4 sm:px-6 flex items-center justify-between hover:bg-zinc-900/50 transition-colors">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-sm bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-md border border-blue-500/20">
+                      {deployment.branch}
+                    </span>
+                    <Link to={`/deployment/${deployment.id}`} className="font-medium text-white hover:underline text-sm">
+                      {deployment.name}
+                    </Link>
+                  </div>
+                  <a href={`https://${deployment.id}.apps.kontyra.name.ng`} target="_blank" rel="noopener noreferrer" className="text-sm text-zinc-400 mt-1 block hover:text-white transition-colors flex items-center gap-1">
+                    {deployment.id}.apps.kontyra.name.ng
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className={`text-xs uppercase font-medium px-2 py-0.5 rounded-full ${
+                    deployment.status === 'active' ? 'bg-green-500/10 text-green-500' : 'bg-zinc-800 text-zinc-400'
+                  }`}>
+                    {deployment.status}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DomainsTab({ project, deployments }: { project: Project, deployments: Deployment[] }) {
+  const { user } = useAuth();
+  const [domainName, setDomainName] = useState('');
+  const [adding, setAdding] = useState(false);
+
+  // In a real app we'd fetch this from the `domains` collection
+  const defaultDomain = `${project.name}.kontyra.app`;
+  const [customDomains, setCustomDomains] = useState<string[]>([]);
+
+  const handleAddDomain = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!domainName || deployments.length === 0) return;
+    setAdding(true);
+    
+    try {
+      // Map to the most recent deployment
+      const activeDeployment = deployments[0];
+      
+      await fetch('/api/domains/map', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain: domainName, deploymentId: activeDeployment.id })
+      });
+      
+      setCustomDomains(prev => [...prev, domainName]);
+      setDomainName('');
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setAdding(false);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="bg-black border border-zinc-800 rounded-lg p-6">
-        <h2 className="text-lg font-medium text-white mb-2">Domains</h2>
+        <h2 className="text-lg font-medium text-white mb-2">Production Domains</h2>
         <p className="text-sm text-zinc-400 mb-6">Manage custom domains and SSL certificates.</p>
         
-        <form className="flex gap-3 mb-8">
+        <form onSubmit={handleAddDomain} className="flex gap-3 mb-8">
           <input 
             type="text" 
-            placeholder="example.com" 
+            placeholder="shop.example.com" 
+            value={domainName}
+            onChange={(e) => setDomainName(e.target.value)}
             className="flex-1 bg-black border border-zinc-800 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-zinc-500"
           />
-          <button type="button" className="bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-md text-sm font-medium transition-colors">
-            Add
+          <button type="submit" disabled={adding || !domainName} className="bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50">
+            {adding ? 'Adding...' : 'Add'}
           </button>
         </form>
 
-        <div className="border border-zinc-800 rounded-md p-4 flex items-center justify-between">
-          <div>
-            <p className="font-medium text-white">*.apps.kontyra.name.ng</p>
-            <p className="text-xs text-zinc-500 mt-1">Default branch • Automatic SSL</p>
+        <div className="space-y-4">
+          <div className="border border-zinc-800 rounded-md p-4 flex items-center justify-between">
+            <div>
+              <p className="font-medium text-white">{defaultDomain}</p>
+              <p className="text-xs text-zinc-500 mt-1">Platform Alias • Automatic SSL</p>
+            </div>
+            <span className="text-xs text-green-500 bg-green-500/10 px-2 py-1 rounded-md">Valid Configuration</span>
           </div>
-          <span className="text-xs text-green-500 bg-green-500/10 px-2 py-1 rounded-md">Valid Configuration</span>
+
+          <div className="border border-zinc-800 rounded-md p-4 flex items-center justify-between">
+            <div>
+              <p className="font-medium text-white">*.apps.kontyra.name.ng</p>
+              <p className="text-xs text-zinc-500 mt-1">Preview Wildcard • Automatic SSL</p>
+            </div>
+            <span className="text-xs text-green-500 bg-green-500/10 px-2 py-1 rounded-md">Valid Configuration</span>
+          </div>
+
+          {customDomains.map((domain, idx) => (
+            <div key={idx} className="border border-zinc-800 rounded-md p-4 flex items-center justify-between">
+              <div>
+                <p className="font-medium text-white">{domain}</p>
+                <div className="text-xs text-zinc-500 mt-1 flex items-center gap-2">
+                  <span>Custom Domain</span>
+                  <span className="text-zinc-700">•</span>
+                  <span className="font-mono text-[10px] bg-zinc-900 px-1 rounded">CNAME deploy.kontyra.name.ng</span>
+                </div>
+              </div>
+              <span className="text-xs text-green-500 bg-green-500/10 px-2 py-1 rounded-md">Active</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -393,7 +526,7 @@ function EnvironmentTab({ projectId }: { projectId: string }) {
   );
 }
 
-function LogsTab({ services }: { services: Service[] }) {
+function LogsTab({ deployments }: { deployments: Deployment[] }) {
   return (
     <div className="space-y-6">
       <div className="bg-black border border-zinc-800 rounded-lg overflow-hidden h-[500px] flex flex-col">
@@ -402,7 +535,7 @@ function LogsTab({ services }: { services: Service[] }) {
           <span className="text-sm font-mono text-zinc-400">Runtime Logs</span>
         </div>
         <div className="p-4 overflow-y-auto flex-1 font-mono text-xs text-zinc-300 space-y-2">
-          {services.length === 0 ? (
+          {deployments.length === 0 ? (
             <p className="text-zinc-500">No active deployments to stream logs from.</p>
           ) : (
             <>

@@ -210,8 +210,8 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import CreateProject from './pages/CreateProject';
 import ProjectDetails from './pages/ProjectDetails';
-import DeployService from './pages/DeployService';
-import ServiceConsole from './pages/ServiceConsole';
+import CreateDeployment from './pages/CreateDeployment';
+import DeploymentDetails from './pages/DeploymentDetails';
 import Community from './pages/Community';
 import Wallet from './pages/Wallet';
 import Profile from './pages/Profile';
@@ -232,8 +232,8 @@ const AnimatedRoutes = () => {
           <Route path="/dashboard" element={<PageTransition><Dashboard /></PageTransition>} />
           <Route path="/projects/new" element={<PageTransition><CreateProject /></PageTransition>} />
           <Route path="/projects/:projectId/*" element={<PageTransition><ProjectDetails /></PageTransition>} />
-          <Route path="/projects/:projectId/deploy" element={<PageTransition><DeployService /></PageTransition>} />
-          <Route path="/service/:serviceId" element={<PageTransition><ServiceConsole /></PageTransition>} />
+          <Route path="/projects/:projectId/deploy" element={<PageTransition><CreateDeployment /></PageTransition>} />
+          <Route path="/deployment/:deploymentId" element={<PageTransition><DeploymentDetails /></PageTransition>} />
           <Route path="/community" element={<PageTransition><Community /></PageTransition>} />
           <Route path="/wallet" element={<PageTransition><Wallet /></PageTransition>} />
           <Route path="/settings" element={<PageTransition><Profile /></PageTransition>} />

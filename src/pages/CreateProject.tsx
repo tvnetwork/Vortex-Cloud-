@@ -71,7 +71,7 @@ export default function CreateProject() {
           Create a new Project
         </h1>
         <p className="text-zinc-400 text-sm">
-          Projects allow you to organize your deployments and services.
+          Projects allow you to organize your deployments and deployments.
         </p>
       </div>
 

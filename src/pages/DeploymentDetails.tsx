@@ -25,15 +25,14 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { Service, Deployment, Metric } from '../types';
+import { Deployment, Metric } from '../types';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
-export default function ServiceConsole() {
-  const { serviceId } = useParams<{ serviceId: string }>();
+export default function DeploymentDetails() {
+  const { deploymentId } = useParams<{ deploymentId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [service, setService] = useState<Service | null>(null);
   const [deployment, setDeployment] = useState<Deployment | null>(null);
   const [metric, setMetric] = useState<Metric | null>(null);
   const [loading, setLoading] = useState(true);
@@ -57,7 +56,7 @@ export default function ServiceConsole() {
     if (buildIntervalRef.current) return;
 
     const devRef = doc(db, 'deployments', deployId);
-    const svcRef = doc(db, 'services', svcId);
+    const svcRef = doc(db, 'deployments', svcId);
 
     const buildSteps = [
       'Building project...',
@@ -96,11 +95,11 @@ export default function ServiceConsole() {
   };
 
   useEffect(() => {
-    if (service && deployment && service.status === 'deploying' && startedAuto.current !== service.id) {
-      startedAuto.current = service.id;
-      startBuildSimulation(service.id, deployment.id);
+    if (deployment && deployment && deployment.status === 'deploying' && startedAuto.current !== deployment.id) {
+      startedAuto.current = deployment.id;
+      startBuildSimulation(deployment.id, deployment.id);
     }
-  }, [service?.status, deployment?.id]);
+  }, [deployment?.status, deployment?.id]);
 
   useEffect(() => {
     return () => {
@@ -109,7 +108,7 @@ export default function ServiceConsole() {
   }, []);
 
   const handleAddCustomDomain = async () => {
-    if (!customDomainInput.trim() || !service) return;
+    if (!customDomainInput.trim() || !deployment) return;
 
     if (!customDomainInput.includes('.') || customDomainInput.length < 5) {
       setDomainError('Invalid domain format.');
@@ -117,7 +116,7 @@ export default function ServiceConsole() {
     }
 
     try {
-      const svcRef = doc(db, 'services', service.id);
+      const svcRef = doc(db, 'deployments', deployment.id);
       await updateDoc(svcRef, {
         customDomain: customDomainInput.toLowerCase().trim(),
         customDomainStatus: 'pending'
@@ -130,14 +129,14 @@ export default function ServiceConsole() {
   };
 
   const handleVerifyCustomDomain = async () => {
-    if (!service) return;
+    if (!deployment) return;
     setIsVerifyingDomain(true);
     setDomainError(null);
 
     setTimeout(async () => {
       try {
-        const svcRef = doc(db, 'services', service.id);
-        const verifiedDomain = service.customDomain || 'custom.deploy.kontyra.name.ng';
+        const svcRef = doc(db, 'deployments', deployment.id);
+        const verifiedDomain = deployment.customDomain || 'custom.deploy.kontyra.name.ng';
         await updateDoc(svcRef, {
           customDomainStatus: 'verified',
           domain: verifiedDomain,
@@ -164,11 +163,11 @@ export default function ServiceConsole() {
   };
 
   const handleDeleteCustomDomain = async () => {
-    if (!service) return;
+    if (!deployment) return;
     try {
-      const svcRef = doc(db, 'services', service.id);
+      const svcRef = doc(db, 'deployments', deployment.id);
       const randId = Math.random().toString(36).substring(2, 7);
-      const hostName = `${service.name.toLowerCase()}-${randId}.deploy.kontyra.name.ng`;
+      const hostName = `${deployment.name.toLowerCase()}-${randId}.deploy.kontyra.name.ng`;
       
       await updateDoc(svcRef, {
         customDomain: null,
@@ -180,29 +179,21 @@ export default function ServiceConsole() {
   };
 
   useEffect(() => {
-    if (!user || !serviceId) return;
+    if (!user || !deploymentId) return;
 
-    const serviceRef = doc(db, 'services', serviceId);
-    const unsubService = onSnapshot(serviceRef, (snap) => {
+    const deploymentRef = doc(db, 'deployments', deploymentId);
+    const unsubDeployment = onSnapshot(deploymentRef, (snap) => {
       if (snap.exists() && snap.data().ownerId === user.uid) {
-        setService({ id: snap.id, ...snap.data() } as Service);
+        setDeployment({ id: snap.id, ...snap.data() } as Deployment);
       } else {
         navigate('/dashboard');
       }
       setLoading(false);
     }, (err) => {
-      handleFirestoreError(err, OperationType.GET, `services/${serviceId}`);
+      handleFirestoreError(err, OperationType.GET, `deployments/${deploymentId}`);
     });
 
-    const qDeployments = query(collection(db, 'deployments'), where('serviceId', '==', serviceId), where('ownerId', '==', user.uid));
-    const unsubDeployments = onSnapshot(qDeployments, (snap) => {
-      if (!snap.empty) {
-        const docSnap = snap.docs[0];
-        setDeployment({ id: docSnap.id, ...docSnap.data() } as Deployment);
-      }
-    });
-
-    const qMetrics = query(collection(db, 'metrics'), where('serviceId', '==', serviceId), where('ownerId', '==', user.uid));
+    const qMetrics = query(collection(db, 'metrics'), where('deploymentId', '==', deploymentId), where('ownerId', '==', user.uid));
     const unsubMetrics = onSnapshot(qMetrics, (snap) => {
       if (!snap.empty) {
         setMetric({ id: snap.docs[0].id, ...snap.docs[0].data() } as Metric);
@@ -210,11 +201,10 @@ export default function ServiceConsole() {
     });
 
     return () => {
-      unsubService();
-      unsubDeployments();
+      unsubDeployment();
       unsubMetrics();
     };
-  }, [user, serviceId]);
+  }, [user, deploymentId]);
 
   useEffect(() => {
     if (activeTab === 'logs') {
@@ -223,10 +213,10 @@ export default function ServiceConsole() {
   }, [deployment?.logs, activeTab]);
 
   const handleRedeploy = async () => {
-    if (!service || !deployment) return;
+    if (!deployment || !deployment) return;
 
     const devRef = doc(db, 'deployments', deployment.id);
-    const svcRef = doc(db, 'services', service.id);
+    const svcRef = doc(db, 'deployments', deployment.id);
 
     await updateDoc(svcRef, { status: 'deploying' });
     await updateDoc(devRef, { 
@@ -237,20 +227,20 @@ export default function ServiceConsole() {
     });
 
     if (buildIntervalRef.current) clearInterval(buildIntervalRef.current);
-    startedAuto.current = service.id;
-    startBuildSimulation(service.id, deployment.id);
+    startedAuto.current = deployment.id;
+    startBuildSimulation(deployment.id, deployment.id);
   };
 
   const handleShellCommand = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!shellInput.trim() || !service) return;
+    if (!shellInput.trim() || !deployment) return;
 
     const cmd = shellInput.trim();
     let result = '';
 
-    if (service.type === 'postgres') {
+    if (deployment.type === 'postgres') {
       result = cmd.toLowerCase().includes('select') ? '1 row retrieved.' : 'Command executed.';
-    } else if (service.type === 'redis') {
+    } else if (deployment.type === 'redis') {
       result = cmd.toLowerCase().includes('set') ? 'OK' : 'nil';
     } else {
       result = 'HTTP 200 OK';
@@ -276,7 +266,7 @@ export default function ServiceConsole() {
     });
   };
 
-  if (loading || !service) {
+  if (loading || !deployment) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-zinc-500" />
@@ -284,7 +274,7 @@ export default function ServiceConsole() {
     );
   }
 
-  const isDatabase = service.type === 'postgres' || service.type === 'redis';
+  const isDatabase = deployment.type === 'postgres' || deployment.type === 'redis';
   const chartData = metric ? metric.timestamps.map((t, i) => ({
     time: new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     CPU: metric.cpu[i] || 0,
@@ -294,7 +284,7 @@ export default function ServiceConsole() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 min-h-screen">
       <Link 
-        to={`/project/${service.projectId}`} 
+        to={`/project/${deployment.projectId}`} 
         className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition-colors mb-6"
       >
         <ArrowLeft className="h-4 w-4" />
@@ -308,28 +298,28 @@ export default function ServiceConsole() {
           </div>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-semibold tracking-tight text-white">{service.name}</h1>
+              <h1 className="text-2xl font-semibold tracking-tight text-white">{deployment.name}</h1>
               <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full capitalize ${
-                service.status === 'active' ? 'bg-zinc-900 text-zinc-300 border border-zinc-800' :
-                service.status === 'deploying' ? 'bg-blue-900/30 text-blue-400 border border-blue-900/50' :
+                deployment.status === 'active' ? 'bg-zinc-900 text-zinc-300 border border-zinc-800' :
+                deployment.status === 'deploying' ? 'bg-blue-900/30 text-blue-400 border border-blue-900/50' :
                 'bg-red-900/30 text-red-400 border border-red-900/50'
               }`}>
-                {service.status}
+                {deployment.status}
               </span>
             </div>
             <div className="flex items-center gap-4 mt-1 text-sm text-zinc-400">
               <a 
-                href={service.endpoint && service.endpoint.startsWith('http') ? service.endpoint : `https://${service.domain}`}
+                href={deployment.endpoint && deployment.endpoint.startsWith('http') ? deployment.endpoint : `https://${deployment.domain}`}
                 target="_blank" 
                 rel="noreferrer"
                 className="hover:text-white transition-colors flex items-center gap-1"
               >
-                {service.domain} <ExternalLink className="h-3 w-3" />
+                {deployment.domain} <ExternalLink className="h-3 w-3" />
               </a>
-              {service.repository && (
+              {deployment.repository && (
                 <>
                   <span className="text-zinc-600">•</span>
-                  <span>{service.repository}</span>
+                  <span>{deployment.repository}</span>
                 </>
               )}
             </div>
@@ -338,10 +328,10 @@ export default function ServiceConsole() {
 
         <button
           onClick={handleRedeploy}
-          disabled={service.status === 'deploying'}
+          disabled={deployment.status === 'deploying'}
           className="bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
         >
-          <RefreshCcw className={`h-4 w-4 ${service.status === 'deploying' && 'animate-spin'}`} />
+          <RefreshCcw className={`h-4 w-4 ${deployment.status === 'deploying' && 'animate-spin'}`} />
           Redeploy
         </button>
       </div>
@@ -455,7 +445,7 @@ export default function ServiceConsole() {
             <p className="text-sm text-zinc-400 mb-8">Manage custom domains assigned to this deployment.</p>
 
             <div className="space-y-6">
-              {!service.customDomain ? (
+              {!deployment.customDomain ? (
                 <div className="border border-zinc-800 rounded-md p-6">
                   <h4 className="text-sm font-medium text-white mb-4">Add Custom Domain</h4>
                   <div className="flex gap-3">
@@ -478,9 +468,9 @@ export default function ServiceConsole() {
               ) : (
                 <div className="border border-zinc-800 rounded-md overflow-hidden">
                   <div className="p-4 flex justify-between items-center bg-zinc-950 border-b border-zinc-800">
-                    <span className="font-medium text-white">{service.customDomain}</span>
+                    <span className="font-medium text-white">{deployment.customDomain}</span>
                     <span className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-zinc-900 border border-zinc-800">
-                      {service.customDomainStatus === 'verified' ? (
+                      {deployment.customDomainStatus === 'verified' ? (
                         <><Check className="h-3 w-3 text-green-500" /> Valid Configuration</>
                       ) : (
                         <><AlertCircle className="h-3 w-3 text-yellow-500" /> Invalid Configuration</>
@@ -488,7 +478,7 @@ export default function ServiceConsole() {
                     </span>
                   </div>
 
-                  {service.customDomainStatus !== 'verified' && (
+                  {deployment.customDomainStatus !== 'verified' && (
                     <div className="p-6 space-y-6">
                       <div className="space-y-2 text-sm">
                         <p className="text-white font-medium">Please configure your DNS records:</p>
@@ -516,7 +506,7 @@ export default function ServiceConsole() {
                     </div>
                   )}
 
-                  {service.customDomainStatus === 'verified' && (
+                  {deployment.customDomainStatus === 'verified' && (
                     <div className="p-4 border-t border-zinc-800 bg-black flex justify-end">
                        <button
                           onClick={handleDeleteCustomDomain}

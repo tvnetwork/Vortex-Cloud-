@@ -20,7 +20,7 @@ export interface Project {
   createdAt: any;
 }
 
-export interface Service {
+export interface Deployment {
   id: string;
   projectId: string;
   ownerId: string;
@@ -29,23 +29,12 @@ export interface Service {
   status: 'active' | 'deploying' | 'failed' | 'offline';
   repository?: string;
   branch?: string;
+  commitHash?: string;
+  commitMsg?: string;
   port?: number;
   domain?: string;
-  endpoint?: string;
-  customDomain?: string;
-  customDomainStatus?: 'pending' | 'verified';
-  createdAt: any;
-}
-
-export interface Deployment {
-  id: string;
-  serviceId: string;
-  projectId: string;
-  ownerId: string;
-  commitMsg?: string;
-  commitHash?: string;
-  status: 'active' | 'deploying' | 'failed';
-  logs: string[];
+  previewUrl?: string;
+  logs?: string[];
   createdAt: any;
 }
 
@@ -59,9 +48,20 @@ export interface EnvVar {
   createdAt: any;
 }
 
+export interface Domain {
+  id: string;
+  projectId: string;
+  ownerId: string;
+  domain: string;
+  targetDeploymentId: string;
+  type: 'preview' | 'production' | 'custom';
+  status: 'pending' | 'verified' | 'active';
+  createdAt: any;
+}
+
 export interface Metric {
   id: string;
-  serviceId: string;
+  deploymentId: string;
   ownerId: string;
   timestamps: number[];
   cpu: number[];

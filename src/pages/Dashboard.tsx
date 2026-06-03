@@ -18,13 +18,13 @@ import {
   onSnapshot
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { Project, Service } from '../types';
+import { Project, Deployment } from '../types';
 
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
-  const [allServices, setAllServices] = useState<Service[]>([]);
+  const [allServices, setAllServices] = useState<Deployment[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -50,9 +50,9 @@ export default function Dashboard() {
       handleFirestoreError(error, OperationType.LIST, 'projects');
     });
 
-    const qServices = query(collection(db, 'services'), where('ownerId', '==', user.uid));
+    const qServices = query(collection(db, 'deployments'), where('ownerId', '==', user.uid));
     const unsubServices = onSnapshot(qServices, (snap) => {
-      const servs: Service[] = [];
+      const servs: Deployment[] = [];
       snap.forEach((docSnap) => {
         const data = docSnap.data();
         servs.push({
@@ -67,7 +67,7 @@ export default function Dashboard() {
       });
       setAllServices(servs);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'services');
+      handleFirestoreError(error, OperationType.LIST, 'deployments');
     });
 
     return () => {
@@ -136,9 +136,9 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredProjects.map((project) => {
             const projectServices = allServices.filter(s => s.projectId === project.id);
-            const webServices = projectServices.filter(s => s.type === 'web_service' || s.type === 'static_site');
+            const webServices = projectServices.filter(s => s.type === 'web_deployment' || s.type === 'static_site');
             
-            // Assume the main service is the first web service, or just the first service
+            // Assume the main deployment is the first web deployment, or just the first deployment
             const mainService = webServices[0] || projectServices[0];
             
             // Generate a random-looking domain for Vercel-like aesthetic if none exists

@@ -30,7 +30,7 @@ interface GitRepoItem {
   description: string | null;
 }
 
-export default function DeployService() {
+export default function CreateDeployment() {
   const { projectId } = useParams<{ projectId: string }>();
   const { user, profile } = useAuth();
   const navigate = useNavigate();
@@ -38,8 +38,8 @@ export default function DeployService() {
   const [project, setProject] = useState<Project | null>(null);
   const [loadingProject, setLoadingProject] = useState(true);
 
-  const [serviceName, setServiceName] = useState('');
-  const [serviceType, setServiceType] = useState<'web_service' | 'postgres' | 'redis' | 'static_site'>('web_service');
+  const [deploymentName, setServiceName] = useState('');
+  const [deploymentType, setServiceType] = useState<'web_deployment' | 'postgres' | 'redis' | 'static_site'>('web_deployment');
   const [gitRepo, setGitRepo] = useState('');
   const [gitBranch, setGitBranch] = useState('main');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -75,7 +75,7 @@ export default function DeployService() {
 
   useEffect(() => {
     const token = localStorage.getItem('github_access_token');
-    const isGitType = serviceType === 'web_service' || serviceType === 'static_site';
+    const isGitType = deploymentType === 'web_deployment' || deploymentType === 'static_site';
 
     const fetchGeneralRepos = async (authToken: string): Promise<GitRepoItem[]> => {
       const res = await fetch("https://api.github.com/user/repos?per_page=100&sort=updated", {
@@ -138,7 +138,7 @@ export default function DeployService() {
           });
       });
     }
-  }, [serviceType, profile?.githubUsername]);
+  }, [deploymentType, profile?.githubUsername]);
 
   const fetchBranches = (repoFullName: string) => {
     const token = localStorage.getItem('github_access_token');
@@ -187,11 +187,11 @@ export default function DeployService() {
     fetchBranches(repo.full_name);
   };
 
-  const handleDeployService = async (e: React.FormEvent) => {
+  const handleCreateDeployment = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
-    if (!user || !projectId || !serviceName.trim()) {
+    if (!user || !projectId || !deploymentName.trim()) {
       setErrorMessage("Please complete all required fields.");
       return;
     }
@@ -199,24 +199,24 @@ export default function DeployService() {
     setIsSubmitting(true);
     try {
       const randId = Math.random().toString(36).substring(2, 7);
-      const hostName = `${serviceName.toLowerCase()}-${randId}.deploy.kontyra.name.ng`;
-      const endpointVal = serviceType === 'postgres' 
+      const hostName = `${deploymentName.toLowerCase()}-${randId}.deploy.kontyra.name.ng`;
+      const endpointVal = deploymentType === 'postgres' 
         ? `postgresql://vortex_user:${randId}99@${hostName}:5432/vortex_db`
-        : serviceType === 'redis'
+        : deploymentType === 'redis'
         ? `redis://:${randId}auth@${hostName}:6379`
         : `https://${hostName}`;
 
-      const finalRepo = serviceType === 'web_service' || serviceType === 'static_site' 
-        ? gitRepo.trim() || 'github.com/vortex-apps/service-repo' 
+      const finalRepo = deploymentType === 'web_deployment' || deploymentType === 'static_site' 
+        ? gitRepo.trim() || 'github.com/vortex-apps/deployment-repo' 
         : '';
-      const finalBranch = serviceType === 'web_service' || serviceType === 'static_site' 
+      const finalBranch = deploymentType === 'web_deployment' || deploymentType === 'static_site' 
         ? gitBranch.trim() 
         : '';
 
-      let backendPort = serviceType === 'web_service' ? 3000 : 0;
+      let backendPort = deploymentType === 'web_deployment' ? 3000 : 0;
       let deployStatus = 'deploying';
       
-      if (serviceType === 'web_service' || serviceType === 'static_site') {
+      if (deploymentType === 'web_deployment' || deploymentType === 'static_site') {
         try {
           const repoUrl = finalRepo.startsWith('http') ? finalRepo : `https://${finalRepo}`;
           const res = await fetch('/api/deploy', {
@@ -235,11 +235,11 @@ export default function DeployService() {
         }
       }
 
-      const serviceRef = await addDoc(collection(db, 'services'), {
+      const deploymentRef = await addDoc(collection(db, 'deployments'), {
         projectId,
         ownerId: user.uid,
-        name: serviceName.trim(),
-        type: serviceType,
+        name: deploymentName.trim(),
+        type: deploymentType,
         status: deployStatus,
         repository: finalRepo,
         branch: finalBranch,
@@ -251,29 +251,29 @@ export default function DeployService() {
 
       const finalCommitMsg = realCommitMsg || 'Initial deployment from platform';
       const finalCommitHash = realCommitHash || Math.random().toString(16).substring(2, 9);
-      const isStaticOrWeb = serviceType === 'web_service' || serviceType === 'static_site';
+      const isStaticOrWeb = deploymentType === 'web_deployment' || deploymentType === 'static_site';
 
       await addDoc(collection(db, 'deployments'), {
-        serviceId: serviceRef.id,
+        deploymentId: deploymentRef.id,
         projectId,
         ownerId: user.uid,
         commitMsg: finalCommitMsg,
         commitHash: finalCommitHash,
         status: 'deploying',
         logs: [
-          `Running build in ${serviceType} environment...`,
+          `Running build in ${deploymentType} environment...`,
           `Provisioning deployment container...`,
           isStaticOrWeb 
             ? `Cloning repository ${finalRepo} (branch: ${finalBranch})` 
             : `Initializing persistent volume storage...`,
           `Installing dependencies...`,
-          `Starting service instance...`
+          `Starting deployment instance...`
         ],
         createdAt: serverTimestamp()
       });
 
       await addDoc(collection(db, 'metrics'), {
-        serviceId: serviceRef.id,
+        deploymentId: deploymentRef.id,
         ownerId: user.uid,
         timestamps: [Date.now()],
         cpu: [0],
@@ -282,10 +282,10 @@ export default function DeployService() {
         updatedAt: serverTimestamp()
       });
 
-      navigate(`/service/${serviceRef.id}`);
+      navigate(`/deployment/${deploymentRef.id}`);
     } catch (err: any) {
       setErrorMessage("Failed to deploy. Please verify your configuration.");
-      handleFirestoreError(err, OperationType.WRITE, 'services');
+      handleFirestoreError(err, OperationType.WRITE, 'deployments');
     } finally {
       setIsSubmitting(false);
     }
@@ -300,7 +300,7 @@ export default function DeployService() {
   }
 
   const stackTypes = [
-    { type: 'web_service', label: 'Web Service', icon: Server },
+    { type: 'web_deployment', label: 'Web Deployment', icon: Server },
     { type: 'static_site', label: 'Static Site', icon: Globe },
     { type: 'postgres', label: 'Postgres DB', icon: Database },
     { type: 'redis', label: 'Redis Cache', icon: Box },
@@ -317,11 +317,11 @@ export default function DeployService() {
       </Link>
 
       <div className="mb-8">
-        <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">Deploy a new Service</h1>
-        <p className="text-zinc-400 text-sm">Configure your service details and source code to deploy.</p>
+        <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">Deploy a new Deployment</h1>
+        <p className="text-zinc-400 text-sm">Configure your deployment details and source code to deploy.</p>
       </div>
 
-      <form onSubmit={handleDeployService} className="space-y-8">
+      <form onSubmit={handleCreateDeployment} className="space-y-8">
         {errorMessage && (
           <div className="bg-red-950/50 border border-red-900 p-4 rounded-md flex items-start gap-3">
             <AlertCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
@@ -331,7 +331,7 @@ export default function DeployService() {
 
         <div className="bg-black border border-zinc-800 rounded-lg p-6 space-y-6">
           <div className="space-y-3">
-            <label className="text-sm font-medium text-white block">Service Type</label>
+            <label className="text-sm font-medium text-white block">Deployment Type</label>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {stackTypes.map((stack) => (
                 <button
@@ -344,7 +344,7 @@ export default function DeployService() {
                     }
                   }}
                   className={`flex flex-col items-center justify-center p-4 border rounded-md transition-colors ${
-                    serviceType === stack.type 
+                    deploymentType === stack.type 
                       ? 'border-white bg-zinc-900 text-white' 
                       : 'border-zinc-800 hover:border-zinc-600 bg-black text-zinc-400'
                   }`}
@@ -357,19 +357,19 @@ export default function DeployService() {
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="serviceName" className="text-sm font-medium text-white block">Service Name</label>
+            <label htmlFor="deploymentName" className="text-sm font-medium text-white block">Deployment Name</label>
             <input
-              id="serviceName"
+              id="deploymentName"
               type="text"
               required
-              placeholder="my-service"
-              value={serviceName}
+              placeholder="my-deployment"
+              value={deploymentName}
               onChange={(e) => setServiceName(e.target.value.toLowerCase().replace(/[^a-z0-9\-]/g, ''))}
               className="w-full bg-black border border-zinc-800 rounded-md px-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 font-mono transition-colors"
             />
           </div>
 
-          {(serviceType === 'web_service' || serviceType === 'static_site') && (
+          {(deploymentType === 'web_deployment' || deploymentType === 'static_site') && (
             <div className="pt-6 border-t border-zinc-800 space-y-6">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium text-white">Source Code</h3>
@@ -521,7 +521,7 @@ export default function DeployService() {
           </button>
           <button
             type="submit"
-            disabled={isSubmitting || !serviceName.trim() || ((serviceType === 'web_service' || serviceType === 'static_site') && !gitRepo)}
+            disabled={isSubmitting || !deploymentName.trim() || ((deploymentType === 'web_deployment' || deploymentType === 'static_site') && !gitRepo)}
             className="bg-white text-black hover:bg-zinc-200 px-6 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center min-w-[120px] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (

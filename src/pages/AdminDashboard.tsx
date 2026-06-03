@@ -41,7 +41,7 @@ export default function AdminDashboard() {
       setGlobalMetrics(prev => ({ ...prev, totalProjectsCount: Math.max(12, snap.size + 12) }));
     });
 
-    const unsubServices = onSnapshot(query(collection(db, 'services'), limit(500)), (snap) => {
+    const unsubServices = onSnapshot(query(collection(db, 'deployments'), limit(500)), (snap) => {
       setGlobalMetrics(prev => ({ ...prev, totalServicesCount: Math.max(42, snap.size + 42) }));
     });
 
