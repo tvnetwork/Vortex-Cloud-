@@ -8,6 +8,25 @@ import { spawn } from "child_process";
 import fs from "fs/promises";
 import path from "path";
 import os from "os";
+import crypto from "crypto";
+import admin from "firebase-admin";
+
+try {
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+    console.log("Firebase Admin initialized via FIREBASE_SERVICE_ACCOUNT");
+  } else {
+    admin.initializeApp();
+    console.log("Firebase Admin initialized via Default Credentials");
+  }
+} catch (err) {
+  console.warn("Failed to initialize Firebase Admin:", err);
+}
+
+const db = admin.firestore();
 
 const app = express();
 
@@ -98,8 +117,74 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
+async function startDeployment(repoUrl: string, targetId: string, deploymentRef?: FirebaseFirestore.DocumentReference) {
+  try {
+    const port = await portfinder.getPortPromise();
+    const workDir = await fs.mkdtemp(path.join(os.tmpdir(), `vortex-${targetId}-`));
+    
+    domainToDeployment.set(`${targetId}.apps.kontyra.name.ng`, targetId);
+    domainToDeployment.set(`${targetId}.deploy.kontyra.name.ng`, targetId);
+
+    const log = async (msg: string) => {
+      console.log(`[${targetId}] ${msg}`);
+      if (deploymentRef) {
+        await deploymentRef.update({
+          logs: admin.firestore.FieldValue.arrayUnion(msg)
+        }).catch(() => {});
+      }
+    };
+
+    await log(`Cloning ${repoUrl} to ${workDir}`);
+    const cloneProcess = spawn("git", ["clone", repoUrl, "."], { cwd: workDir });
+    
+    cloneProcess.on("close", async (code) => {
+      if (code !== 0) {
+        await log(`Git clone failed for ${targetId}`);
+        if (deploymentRef) await deploymentRef.update({ status: 'failed' });
+        return;
+      }
+      
+      await log(`Running npm install for ${targetId}`);
+      const installProcess = spawn(/^win/.test(process.platform) ? "npm.cmd" : "npm", ["install"], { cwd: workDir });
+      
+      installProcess.on("close", async (code) => {
+        if (code !== 0) {
+          await log(`NPM install failed for ${targetId}`);
+          if (deploymentRef) await deploymentRef.update({ status: 'failed' });
+          return;
+        }
+        
+        await log(`Starting app for ${targetId} on port ${port}`);
+        const startProcess = spawn(/^win/.test(process.platform) ? "npm.cmd" : "npm", ["start"], { 
+          cwd: workDir,
+          env: { ...process.env, PORT: port.toString() } 
+        });
+
+        startProcess.stdout.on("data", async (data) => await log(data.toString().trim()));
+        startProcess.stderr.on("data", async (data) => await log(`ERROR: ${data.toString().trim()}`));
+
+        deploymentPorts.set(targetId, port);
+        await log(`${targetId} is live on port ${port}`);
+        
+        if (deploymentRef) {
+          await deploymentRef.update({ 
+            status: 'active',
+            port,
+            domain: `${targetId}.apps.kontyra.name.ng`
+          });
+        }
+      });
+    });
+
+    return { port, workDir, url: `${targetId}.apps.kontyra.name.ng` };
+  } catch (error) {
+    console.error(`Deploy error for ${targetId}:`, error);
+    if (deploymentRef) await deploymentRef.update({ status: 'failed', logs: admin.firestore.FieldValue.arrayUnion(`Internal error: ${error}`) });
+    throw error;
+  }
+}
+
 app.post("/api/deploy", async (req, res) => {
-  // subdomain is deprecated, using deploymentId instead
   const { repoUrl, subdomain, deploymentId } = req.body;
   
   const targetId = deploymentId || subdomain;
@@ -108,53 +193,80 @@ app.post("/api/deploy", async (req, res) => {
   }
 
   try {
-    const port = await portfinder.getPortPromise();
-    const workDir = await fs.mkdtemp(path.join(os.tmpdir(), `vortex-${targetId}-`));
+    const deploymentRef = db.collection("deployments").doc(targetId);
     
-    // Auto-map the default deploy URL
-    domainToDeployment.set(`${targetId}.apps.kontyra.name.ng`, targetId);
-    // Backwards compatibility
-    domainToDeployment.set(`${targetId}.deploy.kontyra.name.ng`, targetId);
+    // Fire and forget background start
+    startDeployment(repoUrl, targetId, deploymentRef).catch(console.error);
 
-    // Respond immediately
     res.json({ 
       message: "Deployment started", 
       deploymentId: targetId, 
-      port, 
-      workDir,
       url: `${targetId}.apps.kontyra.name.ng`
     });
+  } catch (error) {
+    console.error("Deploy endpoint error:", error);
+    res.status(500).json({ error: "Failed to initiate deployment" });
+  }
+});
 
-    console.log(`[Deploy] Cloning ${repoUrl} to ${workDir}`);
-    const cloneProcess = spawn("git", ["clone", repoUrl, "."], { cwd: workDir });
-    
-    cloneProcess.on("close", (code) => {
-      if (code !== 0) return console.error(`Git clone failed for ${targetId}`);
-      
-      console.log(`[Deploy] Running npm install for ${targetId}`);
-      const installProcess = spawn(/^win/.test(process.platform) ? "npm.cmd" : "npm", ["install"], { cwd: workDir });
-      
-      installProcess.on("close", (code) => {
-        if (code !== 0) return console.error(`NPM install failed for ${targetId}`);
-        
-        console.log(`[Deploy] Starting app for ${targetId} on port ${port}`);
-        const startProcess = spawn(/^win/.test(process.platform) ? "npm.cmd" : "npm", ["start"], { 
-          cwd: workDir,
-          env: { ...process.env, PORT: port.toString() } 
-        });
+app.post("/api/github/webhook", async (req, res) => {
+  const signature = req.headers["x-hub-signature-256"] as string;
+  const event = req.headers["x-github-event"] as string;
+  
+  if (event !== "push") {
+    return res.status(200).send("Ignored non-push event");
+  }
 
-        startProcess.stdout.on("data", (data) => console.log(`[${targetId}] ${data}`));
-        startProcess.stderr.on("data", (data) => console.error(`[${targetId}] ${data}`));
+  const payload = req.body;
+  const githubRepo = payload.repository?.full_name;
+  if (!githubRepo) return res.status(400).send("No repository in payload");
 
-        // Register the service port
-        deploymentPorts.set(targetId, port);
-        console.log(`[Deploy] ${targetId} is live on port ${port}`);
-      });
+  try {
+    const projectsSnapshot = await db.collection("projects").where("githubRepo", "==", githubRepo).get();
+    if (projectsSnapshot.empty) {
+      return res.status(404).send("No project linked to this repository");
+    }
+
+    const projectDoc = projectsSnapshot.docs[0];
+    const project = projectDoc.data();
+    const projectId = projectDoc.id;
+
+    if (project.webhookSecret && signature) {
+      const hmac = crypto.createHmac("sha256", project.webhookSecret);
+      const digest = "sha256=" + hmac.update(JSON.stringify(payload)).digest("hex");
+      if (signature !== digest) {
+        return res.status(401).send("Invalid signature");
+      }
+    }
+
+    const branch = payload.ref ? payload.ref.replace("refs/heads/", "") : "main";
+    const commitHash = payload.after;
+    const commitMessage = payload.head_commit?.message || "Manual push";
+    const repoUrl = payload.repository.clone_url;
+
+    const deploymentRef = db.collection("deployments").doc();
+    const targetId = deploymentRef.id;
+
+    await deploymentRef.set({
+      projectId,
+      ownerId: project.ownerId,
+      name: `${project.name} Deployment`,
+      type: 'web_service',
+      status: 'deploying',
+      repository: githubRepo,
+      branch,
+      commitHash,
+      commitMsg: commitMessage,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      logs: ["Deployment triggered via GitHub Webhook..."]
     });
 
-  } catch (error) {
-    console.error("Deploy error:", error);
-    res.status(500).json({ error: "Failed to initiate deployment" });
+    startDeployment(repoUrl, targetId, deploymentRef).catch(console.error);
+
+    res.status(202).json({ message: "Deployment started", deploymentId: targetId });
+  } catch (err) {
+    console.error("Webhook error:", err);
+    res.status(500).send("Internal Server Error");
   }
 });
 

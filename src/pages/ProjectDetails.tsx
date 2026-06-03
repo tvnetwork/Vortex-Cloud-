@@ -23,10 +23,12 @@ import {
   onSnapshot, 
   addDoc, 
   deleteDoc, 
-  serverTimestamp
+  serverTimestamp,
+  updateDoc
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Project, Deployment, EnvVar } from '../types';
+import { Github } from 'lucide-react';
 
 export default function ProjectDetails() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -530,19 +532,34 @@ function LogsTab({ deployments }: { deployments: Deployment[] }) {
   return (
     <div className="space-y-6">
       <div className="bg-background border border-border rounded-[var(--radius-card)] overflow-hidden h-[500px] flex flex-col">
-        <div className="bg-surface border-b border-border px-4 py-3 flex items-center gap-2">
-          <TerminalSquare className="h-4 w-4 text-text-secondary" />
-          <span className="text-sm font-mono text-text-secondary">Runtime Logs</span>
+        <div className="bg-surface border-b border-border px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <TerminalSquare className="h-4 w-4 text-text-secondary" />
+            <span className="text-sm font-mono text-text-secondary">Runtime Logs</span>
+          </div>
+          {deployments.length > 0 && (
+            <span className="text-xs text-muted flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-success animate-pulse"></span> Live
+            </span>
+          )}
         </div>
-        <div className="p-4 overflow-y-auto flex-1 font-mono text-xs text-zinc-300 space-y-2">
+        <div className="p-4 overflow-y-auto flex-1 font-mono text-xs text-zinc-300 space-y-1">
           {deployments.length === 0 ? (
             <p className="text-muted">No active deployments to stream logs from.</p>
           ) : (
-            <>
-              <p>[INFO] Application initialized.</p>
-              <p>[INFO] Listening on port 3000</p>
-              <p className="text-muted animate-pulse">Waiting for traffic...</p>
-            </>
+            deployments[0].logs && deployments[0].logs.length > 0 ? (
+              deployments[0].logs.map((log, i) => (
+                <div key={i} className={log.startsWith('ERROR') ? 'text-error' : ''}>
+                  {log}
+                </div>
+              ))
+            ) : (
+              <>
+                <p>[INFO] Application initialized.</p>
+                <p>[INFO] Listening on port 3000</p>
+                <p className="text-muted animate-pulse">Waiting for traffic...</p>
+              </>
+            )
           )}
         </div>
       </div>
@@ -579,6 +596,26 @@ function AnalyticsTab() {
 
 function SettingsTab({ project }: { project: Project }) {
   const navigate = useNavigate();
+  const [repo, setRepo] = useState(project.githubRepo || '');
+  const [saving, setSaving] = useState(false);
+
+  const handleSaveGithub = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const webhookSecret = project.webhookSecret || Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+      await updateDoc(doc(db, 'projects', project.id), {
+        githubRepo: repo,
+        webhookSecret
+      });
+      alert('GitHub Integration updated!');
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update integration');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleDeleteProject = async () => {
     if (!window.confirm(`Are you sure you want to delete ${project.name}?`)) return;
@@ -592,6 +629,62 @@ function SettingsTab({ project }: { project: Project }) {
 
   return (
     <div className="space-y-6 max-w-4xl">
+      <div className="bg-background border border-border rounded-[var(--radius-card)] overflow-hidden mb-6">
+        <div className="px-6 py-4 border-b border-border flex items-center gap-2">
+          <Github className="h-5 w-5 text-text-primary" />
+          <h3 className="text-lg font-medium text-text-primary">GitHub CI/CD Integration</h3>
+        </div>
+        <div className="p-6">
+          <p className="text-sm text-text-secondary mb-4">
+            Connect a GitHub repository to automatically deploy when you push to <code className="font-mono bg-surface px-1 py-0.5 rounded text-text-primary">main</code>.
+          </p>
+          
+          <form onSubmit={handleSaveGithub} className="space-y-4 mb-6">
+            <div>
+              <label className="block text-sm font-medium text-text-primary mb-1">Repository Name</label>
+              <input 
+                type="text" 
+                placeholder="e.g., owner/repo" 
+                value={repo}
+                onChange={(e) => setRepo(e.target.value)}
+                className="w-full bg-surface border border-border rounded-md px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-zinc-500 font-mono"
+              />
+            </div>
+            <button type="submit" disabled={saving} className="bg-primary text-text-primary hover:bg-secondary hover:bg-zinc-200 px-4 py-2 rounded-md text-sm font-medium transition-colors">
+              {saving ? 'Saving...' : 'Save Integration'}
+            </button>
+          </form>
+
+          {project.webhookSecret && (
+            <div className="space-y-4 border-t border-border pt-4">
+              <p className="text-sm text-text-primary font-medium">Webhook Configuration</p>
+              <p className="text-xs text-text-secondary mb-2">Configure this inside your GitHub Repository Settings -&gt; Webhooks</p>
+              
+              <div>
+                <label className="block text-xs text-text-secondary mb-1">Payload URL</label>
+                <div className="bg-surface border border-border rounded-md px-3 py-2 text-xs font-mono text-muted select-all">
+                  https://deploy.kontyra.name.ng/api/github/webhook
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-xs text-text-secondary mb-1">Content type</label>
+                <div className="bg-surface border border-border rounded-md px-3 py-2 text-xs font-mono text-muted">
+                  application/json
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-xs text-text-secondary mb-1">Secret</label>
+                <div className="bg-surface border border-border rounded-md px-3 py-2 text-xs font-mono text-muted select-all">
+                  {project.webhookSecret}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="border border-red-900/50 bg-red-950/10 rounded-[var(--radius-card)] overflow-hidden">
         <div className="px-6 py-4 border-b border-red-900/50">
           <h3 className="text-lg font-medium text-error">Danger Zone</h3>
