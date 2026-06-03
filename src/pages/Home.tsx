@@ -104,7 +104,7 @@ export default function Home() {
     { text: '✓ Authenticated as dev@vortex-cloud', color: 'text-emerald-400 font-medium' },
     { text: '$ vortex deploy --project demo-app', color: 'text-slate-400' },
     { text: '⚙ Compiling build tree via Bun v1.1...', color: 'text-cyan-400 animate-pulse' },
-    { text: '✓ Deployment ready: https://demo-app.vortex.dev', color: 'text-cyan-400 font-bold' }
+    { text: '✓ Deployment ready: https://demo-app.deploy.kontyra.name.ng', color: 'text-cyan-400 font-bold' }
   ];
 
   return (

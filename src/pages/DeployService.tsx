@@ -219,7 +219,7 @@ export default function DeployService() {
     try {
       // Computes endpoints based on random identifiers
       const randId = Math.random().toString(36).substring(2, 7);
-      const hostName = `${serviceName.toLowerCase()}-${randId}.vortex.dev`;
+      const hostName = `${serviceName.toLowerCase()}-${randId}.deploy.kontyra.name.ng`;
       const endpointVal = serviceType === 'postgres' 
         ? `postgresql://vortex_user:${randId}99@${hostName}:5432/vortex_db`
         : serviceType === 'redis'

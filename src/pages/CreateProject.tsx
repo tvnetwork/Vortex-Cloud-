@@ -101,8 +101,8 @@ export default function CreateProject() {
                 <span className="text-cyan-400">*</span>
               </label>
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500 text-sm font-mono">
-                  vortex.dev/
+                <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500 text-xs font-mono">
+                  deploy.kontyra.name.ng/
                 </span>
                 <input
                   id="projectName"
@@ -112,7 +112,7 @@ export default function CreateProject() {
                   value={projectName}
                   onChange={(e) => setProjectName(e.target.value.toLowerCase().replace(/[^a-z0-9\-]/g, ''))}
                   maxLength={64}
-                  className="w-full bg-[#050810]/90 border border-slate-800 rounded-xl pl-[96px] pr-4 py-3 text-sm font-semibold text-slate-100 placeholder-slate-650 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30 transition-all font-mono"
+                  className="w-full bg-[#050810]/90 border border-slate-800 rounded-xl pl-[172px] pr-4 py-3 text-sm font-semibold text-slate-100 placeholder-slate-650 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30 transition-all font-mono"
                 />
               </div>
               <p className="text-[10px] text-slate-500">Lowercases, numbers, and hyphens only. Unique cluster host prefix.</p>

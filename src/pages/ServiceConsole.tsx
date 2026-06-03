@@ -158,7 +158,7 @@ export default function ServiceConsole() {
     setTimeout(async () => {
       try {
         const svcRef = doc(db, 'services', service.id);
-        const verifiedDomain = service.customDomain || 'custom.vortex.dev';
+        const verifiedDomain = service.customDomain || 'custom.deploy.kontyra.name.ng';
         await updateDoc(svcRef, {
           customDomainStatus: 'verified',
           domain: verifiedDomain,
@@ -194,7 +194,7 @@ export default function ServiceConsole() {
     try {
       const svcRef = doc(db, 'services', service.id);
       const randId = Math.random().toString(36).substring(2, 7);
-      const hostName = `${service.name.toLowerCase()}-${randId}.vortex.dev`;
+      const hostName = `${service.name.toLowerCase()}-${randId}.deploy.kontyra.name.ng`;
       const originalEndpoint = `https://${hostName}`;
 
       await updateDoc(svcRef, {
@@ -684,7 +684,7 @@ export default function ServiceConsole() {
                               <div className="space-y-1 bg-slate-950 p-2 rounded border border-slate-900 select-all">
                                 <p><span className="text-cyan-400">Type:</span> CNAME</p>
                                 <p><span className="text-cyan-400">Host/Name:</span> {service.customDomain.includes('.') && !service.customDomain.endsWith('.com') ? service.customDomain.split('.')[0] : '@'}</p>
-                                <p><span className="text-cyan-400">Value:</span> cname.vortex.dev</p>
+                                <p><span className="text-cyan-400">Value:</span> cname.deploy.kontyra.name.ng</p>
                               </div>
                               <div className="space-y-1 bg-slate-950 p-2 rounded border border-slate-900 select-all">
                                 <p><span className="text-indigo-400">Type:</span> TXT</p>
