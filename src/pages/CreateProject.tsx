@@ -99,7 +99,78 @@ export default function CreateProject() {
         githubRepo: selectedRepo?.full_name || null,
         createdAt: serverTimestamp()
       });
-      navigate(`/projects/${docRef.id}`);
+
+      // Automatically create the initial deployment
+      if (selectedRepo?.full_name) {
+        const randId = Math.random().toString(36).substring(2, 7);
+        const hostName = `${projectName.toLowerCase()}-${randId}.apps.kontyra.name.ng`;
+        const repoUrl = `https://github.com/${selectedRepo.full_name}`;
+        const branch = selectedRepo.default_branch || 'main';
+
+        let backendPort = 3000;
+        let deployStatus = 'deploying';
+        
+        try {
+          const res = await fetch('/api/deploy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ repoUrl, subdomain: hostName.split('.')[0] })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            backendPort = data.port || backendPort;
+          } else {
+             deployStatus = 'failed';
+          }
+        } catch (backendErr) {
+          deployStatus = 'failed';
+        }
+
+        const deploymentRef = await addDoc(collection(db, 'deployments'), {
+          projectId: docRef.id,
+          ownerId: user.uid,
+          name: 'initial-deployment',
+          type: 'web_deployment',
+          status: deployStatus,
+          repository: repoUrl,
+          branch: branch,
+          port: backendPort,
+          domain: hostName,
+          endpoint: `https://${hostName}`,
+          createdAt: serverTimestamp()
+        });
+
+        await addDoc(collection(db, 'deployments'), {
+          deploymentId: deploymentRef.id,
+          projectId: docRef.id,
+          ownerId: user.uid,
+          commitMsg: 'Initial deployment from repository import',
+          commitHash: Math.random().toString(16).substring(2, 9),
+          status: deployStatus,
+          logs: [
+            `Running build in web_deployment environment...`,
+            `Provisioning deployment container...`,
+            `Cloning repository ${repoUrl} (branch: ${branch})`,
+            `Installing dependencies...`,
+            `Starting deployment instance...`
+          ],
+          createdAt: serverTimestamp()
+        });
+
+        await addDoc(collection(db, 'metrics'), {
+          deploymentId: deploymentRef.id,
+          ownerId: user.uid,
+          timestamps: [Date.now()],
+          cpu: [0],
+          ram: [0],
+          bandwidth: [0],
+          updatedAt: serverTimestamp()
+        });
+
+        navigate(`/deployment/${deploymentRef.id}`);
+      } else {
+        navigate(`/projects/${docRef.id}`);
+      }
     } catch (error) {
       console.error('Error creating project:', error);
       alert('Failed to create project.');

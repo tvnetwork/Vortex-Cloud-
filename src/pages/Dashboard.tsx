@@ -10,7 +10,8 @@ import {
   Globe,
   Settings,
   MoreVertical,
-  Github
+  Github,
+  ChevronDown
 } from 'lucide-react';
 import { useAuth } from '../App';
 import { 
@@ -31,6 +32,7 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [activeTab, setActiveTab] = useState<'projects' | 'activity' | 'domains' | 'settings'>('projects');
+  const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -105,13 +107,57 @@ export default function Dashboard() {
             <p className="text-sm text-text-secondary">Manage your projects and team infrastructure.</p>
           </div>
         </div>
-        <button
-          onClick={() => navigate('/projects/new')}
-          className="bg-primary text-text-primary hover:bg-secondary hover:bg-zinc-200 font-medium px-4 py-2 rounded-md flex items-center gap-2 transition-colors text-sm whitespace-nowrap shadow-sm"
-        >
-          <Plus className="h-4 w-4" />
-          Add New...
-        </button>
+        
+        <div className="relative">
+          <button
+            onClick={() => setIsAddMenuOpen(!isAddMenuOpen)}
+            className="bg-white text-black hover:bg-zinc-200 font-medium px-4 py-2 rounded-md flex items-center gap-2 transition-colors text-sm whitespace-nowrap shadow-sm"
+          >
+            Add New...
+            <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isAddMenuOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {isAddMenuOpen && (
+            <>
+              <div 
+                className="fixed inset-0 z-40" 
+                onClick={() => setIsAddMenuOpen(false)} 
+              />
+              <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-md shadow-lg z-50 overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-100">
+                <button
+                  onClick={() => {
+                    setIsAddMenuOpen(false);
+                    navigate('/projects/new');
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-text-primary hover:bg-surface flex items-center gap-2"
+                >
+                  <FolderOpen className="h-4 w-4 text-muted" />
+                  Project
+                </button>
+                <button
+                  onClick={() => {
+                    setIsAddMenuOpen(false);
+                    setActiveTab('domains');
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-text-primary hover:bg-surface flex items-center gap-2"
+                >
+                  <Globe className="h-4 w-4 text-muted" />
+                  Domain
+                </button>
+                <button
+                  onClick={() => {
+                    setIsAddMenuOpen(false);
+                    setActiveTab('settings');
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-text-primary hover:bg-surface flex items-center gap-2"
+                >
+                  <Settings className="h-4 w-4 text-muted" />
+                  Team Member
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Main Tabs */}
