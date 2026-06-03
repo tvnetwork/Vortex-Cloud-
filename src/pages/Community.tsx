@@ -1,14 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
 import { 
   Send, 
   MessageSquare, 
   Users, 
   Terminal, 
-  Globe, 
-  Cpu, 
-  ExternalLink,
-  ShieldAlert
+  Globe
 } from 'lucide-react';
 import { useAuth } from '../App';
 import { 
@@ -18,14 +14,13 @@ import {
   orderBy, 
   limit, 
   onSnapshot, 
-  serverTimestamp,
-  getDocs
+  serverTimestamp
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { CommunityMessage } from '../types';
 
 export default function Community() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const [messages, setMessages] = useState<CommunityMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -40,7 +35,6 @@ export default function Community() {
       return;
     }
 
-    // 1. Real-time message listener
     const qMessages = query(collection(db, 'community_messages'), orderBy('createdAt', 'asc'), limit(150));
     const unsubMessages = onSnapshot(qMessages, (snap) => {
       const msgs: CommunityMessage[] = [];
@@ -57,15 +51,11 @@ export default function Community() {
       });
       setMessages(msgs);
       
-      // Auto-scroll on snap read
       setTimeout(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 100);
-    }, (err) => {
-      handleFirestoreError(err, OperationType.LIST, 'community_messages');
     });
 
-    // 2. Fetch some developers dynamically to show under the "Online Cluster Lobby" list
     const qDevs = query(collection(db, 'users'), limit(15));
     const unsubDevs = onSnapshot(qDevs, (snap) => {
       const devs: any[] = [];
@@ -73,15 +63,12 @@ export default function Community() {
         const data = docSnap.data();
         devs.push({
           id: docSnap.id,
-          displayName: data.displayName || 'Vortex Architect',
+          displayName: data.displayName || 'Developer',
           photoURL: data.photoURL,
           githubUsername: data.githubUsername || '',
-          role: data.role || 'developer'
         });
       });
       setOnlineDevs(devs);
-    }, (err) => {
-      console.warn("Devs list sync skipped:", err);
     });
 
     return () => {
@@ -98,7 +85,7 @@ export default function Community() {
     try {
       await addDoc(collection(db, 'community_messages'), {
         senderId: user.uid,
-        senderName: user.displayName || 'Developer Node',
+        senderName: user.displayName || 'Developer',
         senderPhoto: user.photoURL || '',
         text: newMessage.trim(),
         createdAt: serverTimestamp()
@@ -112,36 +99,28 @@ export default function Community() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 min-h-screen">
-      {/* Title */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 pb-6 border-b border-slate-800/80">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 min-h-screen space-y-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-6 border-b border-zinc-800">
         <div className="space-y-1">
-          <h1 className="text-3xl font-extrabold font-heading text-white">Developers Cluster Lobby</h1>
-          <p className="text-slate-400 text-sm font-sans">Global real-time workspace chat. Share URLs and chat systems infrastructure.</p>
+          <h1 className="text-3xl font-semibold tracking-tight text-white">Community</h1>
+          <p className="text-zinc-400 text-sm">Chat with other developers on the platform.</p>
         </div>
-
-        {/* Global Stats counter */}
-        <div className="hidden sm:flex items-center gap-4 font-mono text-xs">
-          <div className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded-full">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
-            <span>Node Lobbies Sync Done</span>
-          </div>
+        <div className="flex items-center gap-2 text-sm text-zinc-400 bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-md">
+          <Globe className="h-4 w-4" />
+          <span>Global Chat</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch h-[650px]">
-        {/* Chat window pane */}
-        <div className="lg:col-span-8 bg-[#0b1222]/50 border border-slate-800/80 rounded-3xl flex flex-col justify-between overflow-hidden shadow-xl">
-          {/* Messages container list */}
-          <div className="p-6 overflow-y-auto flex-grow space-y-4 scrollbar-hide">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[600px]">
+        <div className="lg:col-span-3 bg-black border border-zinc-800 rounded-lg flex flex-col overflow-hidden">
+          <div className="p-6 overflow-y-auto flex-1 space-y-6">
             {messages.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center space-y-3">
-                <MessageSquare className="h-8 w-8 text-slate-500 animate-pulse" />
-                <p className="text-slate-400 font-semibold">Workspace lobby lobby silent</p>
-                <p className="text-slate-500 text-xs max-w-sm">No transmissions compiled. Formulate your first greeting node below.</p>
+              <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
+                <MessageSquare className="h-8 w-8 text-zinc-500" />
+                <p className="text-zinc-500 text-sm">No messages yet. Say hello!</p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {messages.map((msg) => {
                   const isCurrentSender = msg.senderId === user?.uid;
                   return (
@@ -149,28 +128,26 @@ export default function Community() {
                       key={msg.id} 
                       className={`flex gap-3 max-w-[85%] ${isCurrentSender ? 'ml-auto flex-row-reverse' : ''}`}
                     >
-                      {/* Avatar */}
-                      <div className="h-9 w-9 rounded-full bg-slate-800 border border-slate-700/80 overflow-hidden flex-shrink-0">
+                      <div className="h-8 w-8 rounded-full bg-zinc-900 border border-zinc-800 overflow-hidden shrink-0 mt-1">
                         {msg.senderPhoto ? (
                           <img src={msg.senderPhoto} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
                         ) : (
-                          <Terminal className="h-full w-full p-2 text-cyan-400" />
+                          <Terminal className="h-full w-full p-2 text-zinc-500" />
                         )}
                       </div>
 
-                      {/* Msg Bubble details */}
-                      <div className="space-y-1">
-                        <div className={`flex items-center gap-2 text-[10px] font-mono text-slate-500 ${isCurrentSender ? 'justify-end' : ''}`}>
-                          <span className="font-bold text-slate-300">{msg.senderName}</span>
+                      <div className={`space-y-1 ${isCurrentSender ? 'text-right' : ''}`}>
+                        <div className="flex items-center gap-2 text-xs text-zinc-500">
+                          <span className="font-medium text-zinc-300">{msg.senderName}</span>
                           {msg.createdAt && (
                             <span>{new Date(msg.createdAt.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                           )}
                         </div>
 
-                        <div className={`p-3 rounded-2xl text-xs font-sans break-all leading-relaxed ${
+                        <div className={`p-3 rounded-lg text-sm inline-block text-left break-words ${
                           isCurrentSender 
-                            ? 'bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white rounded-tr-none' 
-                            : 'bg-slate-900 border border-slate-800 text-slate-100 rounded-tl-none'
+                            ? 'bg-white text-black' 
+                            : 'bg-zinc-900 text-zinc-100 border border-zinc-800'
                         }`}>
                           {msg.text}
                         </div>
@@ -183,60 +160,54 @@ export default function Community() {
             )}
           </div>
 
-          {/* New message input container */}
           {user ? (
-            <form onSubmit={handleSendMessage} className="p-4 border-t border-slate-800/80 bg-slate-950/40 flex gap-3">
+            <form onSubmit={handleSendMessage} className="p-4 border-t border-zinc-800 bg-zinc-950 flex gap-3">
               <input
                 type="text"
                 required
                 maxLength={1000}
-                placeholder="Broadcast something to developers lobby..."
+                placeholder="Type a message..."
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
-                className="flex-grow bg-[#050810] border border-slate-800 rounded-xl px-4 py-3.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-400"
+                className="flex-1 bg-black border border-zinc-800 rounded-md px-4 py-2 text-sm text-white focus:outline-none focus:border-zinc-500"
               />
               <button
                 type="submit"
                 disabled={isSending || !newMessage.trim()}
-                className="bg-cyan-400 hover:bg-cyan-300 disabled:opacity-50 text-[#050810] font-bold px-6 py-3.5 rounded-xl transition-all shadow-md shadow-cyan-400/10 flex items-center justify-center gap-1.5"
+                className="bg-white text-black hover:bg-zinc-200 disabled:opacity-50 font-medium px-4 py-2 rounded-md transition-colors flex items-center justify-center gap-2"
               >
-                <span>Compile</span>
-                <Send className="h-3.5 w-3.5" />
+                Send
+                <Send className="h-4 w-4" />
               </button>
             </form>
           ) : (
-            <div className="p-6 text-center border-t border-slate-800 bg-slate-950/40 text-xs font-mono text-slate-500">
-              Please deploy your session profile details to broadcast messages.
+            <div className="p-4 text-center border-t border-zinc-800 bg-zinc-950 text-sm text-zinc-500">
+              Sign in to send messages.
             </div>
           )}
         </div>
 
-        {/* Right Devs index sidebar */}
-        <div className="lg:col-span-4 bg-[#0b1222]/30 border border-slate-800/80 rounded-3xl p-6 overflow-y-auto scrollbar-hide shadow-xl flex flex-col justify-start">
-          <div className="pb-4 border-b border-slate-800 mb-4 flex items-center gap-2">
-            <Users className="h-5 w-5 text-cyan-400" />
-            <h3 className="font-bold text-sm tracking-wide text-white font-heading">Cluster Members ({onlineDevs.length})</h3>
+        <div className="bg-black border border-zinc-800 rounded-lg overflow-hidden flex flex-col">
+          <div className="px-4 py-3 border-b border-zinc-800 bg-zinc-950 flex items-center gap-2">
+            <Users className="h-4 w-4 text-zinc-400" />
+            <h3 className="font-medium text-sm text-white">Online ({onlineDevs.length})</h3>
           </div>
 
-          <div className="space-y-3">
+          <div className="p-4 overflow-y-auto flex-1 space-y-4">
             {onlineDevs.map((dev) => (
-              <div 
-                key={dev.id}
-                className="flex items-center gap-3 p-2 bg-[#050810]/40 rounded-xl border border-slate-900/50 hover:border-slate-800 transition-colors"
-              >
-                <div className="h-8 w-8 rounded-full bg-slate-800 overflow-hidden ring-1 ring-slate-800 flex-shrink-0">
+              <div key={dev.id} className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-full bg-zinc-900 border border-zinc-800 overflow-hidden shrink-0">
                   {dev.photoURL ? (
                     <img src={dev.photoURL} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    <Terminal className="h-full w-full p-2 text-cyan-400" />
+                    <Terminal className="h-full w-full p-2 text-zinc-500" />
                   )}
                 </div>
-
-                <div className="space-y-0.5 truncate">
-                  <p className="text-xs font-bold text-slate-100 truncate">{dev.displayName}</p>
-                  <p className="text-[10px] font-mono text-cyan-500 truncate">
-                    {dev.githubUsername ? `@${dev.githubUsername}` : 'Developer Node'}
-                  </p>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-white truncate">{dev.displayName}</p>
+                  {dev.githubUsername && (
+                    <p className="text-xs text-zinc-500 truncate">@{dev.githubUsername}</p>
+                  )}
                 </div>
               </div>
             ))}

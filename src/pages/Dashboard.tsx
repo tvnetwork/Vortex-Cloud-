@@ -1,36 +1,27 @@
 import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Plus, 
-  Terminal, 
-  HardDrive, 
-  Cpu, 
-  Database, 
-  Settings2, 
-  DollarSign, 
-  ArrowRight,
-  Sparkles,
   Search,
-  Activity,
-  FolderOpen
+  FolderOpen,
+  ArrowRight,
+  Globe,
+  Database,
+  Cpu,
+  MoreVertical
 } from 'lucide-react';
 import { useAuth } from '../App';
 import { 
   collection, 
-  addDoc, 
   query, 
   where, 
-  onSnapshot, 
-  serverTimestamp,
-  deleteDoc,
-  doc
+  onSnapshot
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Project, Service } from '../types';
 
 export default function Dashboard() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [allServices, setAllServices] = useState<Service[]>([]);
@@ -40,7 +31,6 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user) return;
 
-    // Real-time listener for user projects
     const qProjects = query(collection(db, 'projects'), where('ownerId', '==', user.uid));
     const unsubProjects = onSnapshot(qProjects, (snap) => {
       const projs: Project[] = [];
@@ -60,7 +50,6 @@ export default function Dashboard() {
       handleFirestoreError(error, OperationType.LIST, 'projects');
     });
 
-    // Real-time listener for user services (to display badges on the project cards)
     const qServices = query(collection(db, 'services'), where('ownerId', '==', user.uid));
     const unsubServices = onSnapshot(qServices, (snap) => {
       const servs: Service[] = [];
@@ -94,174 +83,113 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 min-h-screen">
-      {/* Header and Quick Stats */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10 pb-8 border-b border-slate-800/80">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-extrabold font-heading text-white">Console Cluster Control</h1>
-          <p className="text-slate-400 text-sm">Deploy serverless modules and review live metrics across edge locations.</p>
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-white mb-1">Projects</h1>
+          <p className="text-sm text-zinc-400">View and manage your deployments.</p>
         </div>
-
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => navigate('/project/new')}
-          className="bg-gradient-to-r from-cyan-500 to-indigo-500 text-white font-bold px-6 py-3 rounded-xl shadow-lg shadow-cyan-500/15 hover:opacity-90 transition-all flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          <span>New Project</span>
-        </motion.button>
-      </div>
-
-      {/* Cluster Overview Metrics Panel */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10 font-mono text-sm">
-        <div className="bg-[#0b1222]/80 border border-slate-800 p-6 rounded-2xl flex items-center gap-4 shadow-md">
-          <div className="p-3 bg-cyan-500/10 rounded-xl text-cyan-400">
-            <Cpu className="h-6 w-6" />
+        
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="relative flex-1 md:w-64">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-zinc-500">
+              <Search className="h-4 w-4" />
+            </span>
+            <input
+              type="text"
+              placeholder="Search projects..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-black border border-zinc-800 rounded-md pl-9 pr-4 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-500 transition-colors"
+            />
           </div>
-          <div className="space-y-0.5">
-            <p className="text-[10px] text-slate-500 uppercase tracking-widest font-sans font-semibold">Active Services</p>
-            <p className="text-xl font-bold font-heading text-white">{allServices.length}</p>
-          </div>
-        </div>
-
-        <div className="bg-[#0b1222]/80 border border-slate-800 p-6 rounded-2xl flex items-center gap-4 shadow-md">
-          <div className="p-3 bg-indigo-500/10 rounded-xl text-indigo-400">
-            <HardDrive className="h-6 w-6" />
-          </div>
-          <div className="space-y-0.5">
-            <p className="text-[10px] text-slate-500 uppercase tracking-widest font-sans font-semibold">Project Clusters</p>
-            <p className="text-xl font-bold font-heading text-white">{projects.length}</p>
-          </div>
-        </div>
-
-        <div className="bg-[#0b1222]/80 border border-slate-800 p-6 rounded-2xl flex items-center gap-4 shadow-md">
-          <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-400">
-            <Activity className="h-6 w-6" />
-          </div>
-          <div className="space-y-0.5">
-            <p className="text-[10px] text-slate-500 uppercase tracking-widest font-sans font-semibold">Gateway Status</p>
-            <p className="text-md font-bold font-heading text-emerald-400 uppercase tracking-wider">OK • Online</p>
-          </div>
-        </div>
-
-        <div className="bg-[#0b1222]/80 border border-slate-800 p-6 rounded-2xl flex items-center gap-4 shadow-md">
-          <div className="p-3 bg-yellow-500/10 rounded-xl text-yellow-400">
-            <DollarSign className="h-6 w-6" />
-          </div>
-          <div className="space-y-0.5">
-            <p className="text-[10px] text-slate-500 uppercase tracking-widest font-sans font-semibold">Platform Credits</p>
-            <p className="text-xl font-bold font-heading text-white">${profile?.balance?.toFixed(2) || '50.00'}</p>
-          </div>
+          <button
+            onClick={() => navigate('/project/new')}
+            className="bg-white text-black hover:bg-zinc-200 font-medium px-4 py-2 rounded-md flex items-center gap-2 transition-colors text-sm whitespace-nowrap"
+          >
+            <Plus className="h-4 w-4" />
+            Add New...
+          </button>
         </div>
       </div>
 
+      {/* Projects List */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center p-20 space-y-4">
-          <Terminal className="h-8 w-8 text-cyan-400 animate-spin" />
-          <p className="text-xs text-slate-500 uppercase tracking-wider font-mono">Quering Active Workspaces...</p>
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-zinc-500" />
+        </div>
+      ) : filteredProjects.length === 0 ? (
+        <div className="border border-zinc-800 bg-black rounded-lg p-12 text-center flex flex-col items-center justify-center">
+          <FolderOpen className="h-10 w-10 text-zinc-600 mb-4" />
+          <h3 className="text-lg font-medium text-white mb-2">No projects found</h3>
+          <p className="text-sm text-zinc-400 mb-6 max-w-sm">
+            You don't have any projects matching that criteria, or you haven't created one yet.
+          </p>
+          <Link 
+            to="/projects/new"
+            className="bg-white text-black hover:bg-zinc-200 font-medium px-4 py-2 rounded-md transition-colors flex items-center gap-2 text-sm w-fit mx-auto"
+          >
+            Create your first project
+          </Link>
         </div>
       ) : (
-        <div className="space-y-8">
-          {/* Projects List Container */}
-          <div className="flex items-center justify-between border-b border-slate-800/50 pb-4">
-            <h2 className="text-lg font-bold font-heading text-slate-200">Developer Projects</h2>
-            <div className="relative max-w-xs w-full">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
-                <Search className="h-4 w-4" />
-              </span>
-              <input
-                type="text"
-                placeholder="Find project workspace..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[#0a0f1d] border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-colors"
-              />
-            </div>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredProjects.map((project) => {
+            const projectServices = allServices.filter(s => s.projectId === project.id);
+            const webServices = projectServices.filter(s => s.type === 'web_service' || s.type === 'static_site');
+            
+            // Assume the main service is the first web service, or just the first service
+            const mainService = webServices[0] || projectServices[0];
+            
+            // Generate a random-looking domain for Vercel-like aesthetic if none exists
+            const displayDomain = mainService ? `${mainService.name}.deploy.kontyra.name.ng` : `${project.name}.kontyra.name.ng`;
 
-          {filteredProjects.length === 0 ? (
-            <div className="bg-[#0b1222]/40 border border-dashed border-slate-800 p-12 rounded-3xl text-center flex flex-col items-center justify-center space-y-4">
-              <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-slate-500">
-                <FolderOpen className="h-8 w-8" />
-              </div>
-              <p className="text-slate-400 text-sm">No project workspaces match your criteria.</p>
-              <button
-                onClick={() => navigate('/project/new')}
-                className="bg-slate-900 border border-slate-800 hover:border-slate-700 text-cyan-400 font-bold px-6 py-2.5 rounded-xl font-mono text-xs transition-all"
+            return (
+              <Link
+                key={project.id}
+                to={`/projects/${project.id}`}
+                className="bg-black border border-zinc-800 hover:border-zinc-600 rounded-lg p-5 transition-colors group flex flex-col justify-between min-h-[160px]"
               >
-                + Create First Workspace
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredProjects.map((project) => {
-                const projectServices = allServices.filter(s => s.projectId === project.id);
-                const hasPostgres = projectServices.some(s => s.type === 'postgres');
-                const hasRedis = projectServices.some(s => s.type === 'redis');
-                const hasWebServices = projectServices.some(s => s.type === 'web_service' || s.type === 'static_site');
-
-                return (
-                  <motion.div
-                    key={project.id}
-                    whileHover={{ y: -4, borderColor: 'rgba(34,211,238,0.3)' }}
-                    className="bg-[#0b1222]/60 border border-slate-800/80 rounded-2xl p-6 transition-all shadow-md group flex flex-col justify-between"
-                  >
-                    <div>
-                      {/* Project Header */}
-                      <div className="flex justify-between items-start mb-4">
-                        <h3 className="text-lg font-bold font-heading text-white leading-tight group-hover:text-cyan-400 transition-colors">
-                          {project.name}
-                        </h3>
-                        <Terminal className="h-4 w-4 text-slate-500" />
+                <div>
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+                        <span className="text-sm font-semibold uppercase">{project.name.charAt(0)}</span>
                       </div>
-
-                      {/* Description */}
-                      <p className="text-slate-400 text-xs font-sans line-clamp-2 h-10 mb-6 leading-relaxed">
-                        {project.description || 'Custom computing services core.'}
-                      </p>
+                      <h3 className="text-base font-medium text-zinc-100 group-hover:text-white transition-colors">
+                        {project.name}
+                      </h3>
                     </div>
+                  </div>
+                  <p className="text-sm text-zinc-500 line-clamp-1 mb-4">
+                    {displayDomain}
+                  </p>
+                </div>
 
-                    {/* Footer Services Badges and Link */}
-                    <div className="pt-4 border-t border-slate-800/50 flex items-center justify-between">
-                      <div className="flex gap-1.5">
-                        {projectServices.length === 0 ? (
-                          <span className="text-[10px] font-mono bg-slate-900 text-slate-500 px-2.5 py-1 rounded-md border border-slate-800">
-                            Empty
-                          </span>
-                        ) : (
-                          <>
-                            {hasWebServices && (
-                              <span className="text-[10px] font-mono bg-indigo-500/10 text-indigo-300 px-2 py-0.5 rounded border border-indigo-500/20" title="Web instances running">
-                                Service
-                              </span>
-                            )}
-                            {hasPostgres && (
-                              <span className="text-[10px] font-mono bg-cyan-500/10 text-cyan-300 px-2 py-0.5 rounded border border-cyan-500/20" title="Postgres DB provisioned">
-                                SQL
-                              </span>
-                            )}
-                            {hasRedis && (
-                              <span className="text-[10px] font-mono bg-pink-500/10 text-pink-300 px-2 py-0.5 rounded border border-pink-500/20" title="Redis cache provisioned">
-                                Cache
-                              </span>
-                            )}
-                          </>
-                        )}
-                      </div>
-
-                      <Link
-                        to={`/project/${project.id}`}
-                        className="text-xs font-mono font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 transition-colors"
-                      >
-                        <span>Workspace</span>
-                        <ArrowRight className="h-3 w-3" />
-                      </Link>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          )}
+                <div className="flex items-center justify-between mt-4">
+                  <div className="flex items-center gap-2">
+                    {projectServices.length > 0 ? (
+                      <span className="flex items-center gap-1.5 text-xs text-zinc-400">
+                        <span className="w-2 h-2 rounded-full bg-green-500" />
+                        Ready
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1.5 text-xs text-zinc-500">
+                        <span className="w-2 h-2 rounded-full bg-zinc-600" />
+                        No Deployments
+                      </span>
+                    )}
+                  </div>
+                  
+                  {mainService?.createdAt && (
+                    <span className="text-xs text-zinc-500">
+                      {new Date((mainService.createdAt as any)?.toMillis() || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    </span>
+                  )}
+                </div>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>

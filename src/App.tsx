@@ -22,7 +22,9 @@ import {
   User as UserIcon,
   LayoutDashboard,
   Lock,
-  Plus
+  Plus,
+  Triangle,
+  Loader2
 } from 'lucide-react';
 import { cn } from './lib/utils';
 
@@ -48,7 +50,6 @@ export const useAuth = () => {
 const Navbar = () => {
   const { user, profile, loading, login, logout } = useAuth();
   const location = useLocation();
-  const { t } = useTranslation();
 
   // Update lastActive on navigation
   useEffect(() => {
@@ -66,93 +67,89 @@ const Navbar = () => {
     }
   };
 
-  const navLinks = [
-    { to: "/dashboard", label: 'Console', show: !!user, icon: LayoutDashboard },
-    { to: "/community", label: 'Dev Lobby', show: true, icon: Globe },
-    { to: "/wallet", label: 'Billing', show: !!user, icon: DollarSign },
-    { to: "/admin", label: 'Root Control', show: profile?.role === 'admin' || user?.email === 'oladoyeheritage445@gmail.com', icon: Lock },
+  const isPublicRoute = ['/', '/features', '/pricing', '/docs'].includes(location.pathname);
+
+  const publicLinks = [
+    { to: "/features", label: 'Features', show: true, icon: Activity },
+    { to: "/pricing", label: 'Pricing', show: true, icon: DollarSign },
+    { to: "/docs", label: 'Docs', show: true, icon: Terminal },
   ];
 
+  const dashboardLinks = [
+    { to: "/dashboard", label: 'Overview', show: !!user, icon: LayoutDashboard },
+    { to: "/community", label: 'Community', show: true, icon: Globe },
+    { to: "/wallet", label: 'Billing', show: !!user, icon: DollarSign },
+    { to: "/admin", label: 'Admin', show: profile?.role === 'admin' || user?.email === 'oladoyeheritage445@gmail.com', icon: Lock },
+  ];
+
+  const activeLinks = isPublicRoute && !user ? publicLinks : dashboardLinks;
+
   return (
-    <nav className="border-b border-slate-800 bg-[#070b14]/90 backdrop-blur-md sticky top-0 z-50">
+    <nav className="border-b border-zinc-800 bg-black sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16 items-center">
+        <div className="flex justify-between h-14 items-center">
           <div className="flex items-center gap-2 md:gap-4">
             <Link to="/" className="flex items-center gap-2 group">
-              <motion.div 
-                whileHover={{ rotate: 180, scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                transition={{ type: "spring", stiffness: 300, damping: 15 }}
-                className="p-1.5 md:p-2 bg-gradient-to-tr from-indigo-500 to-cyan-500 rounded-lg md:rounded-xl shadow-lg shadow-indigo-500/20"
-              >
-                <Terminal className="h-5 w-5 md:h-6 md:w-6 text-white" />
-              </motion.div>
-              <div className="flex flex-col">
-                <span className="text-md md:text-lg font-bold tracking-tight text-white leading-tight">Vortex Cloud</span>
-                <span className="text-[10px] text-cyan-400 font-mono tracking-widest uppercase">Console v1.6</span>
-              </div>
+              <Triangle className="h-5 w-5 text-white fill-white" />
+              <span className="text-sm font-semibold tracking-tight text-white leading-tight">Deploy by Kontyra</span>
             </Link>
           </div>
 
-          <div className="hidden md:flex items-center gap-1">
-            {navLinks.filter(link => link.show).map(link => (
+          <div className="hidden md:flex items-center gap-2 ml-6">
+            {activeLinks.filter(link => link.show).map(link => (
               <Link 
                 key={link.to}
                 to={link.to} 
-                className="relative px-4 py-2 group"
+                className="relative px-3 py-1.5 rounded-md transition-colors duration-200 hover:bg-zinc-900"
               >
-                <span className={`text-sm font-bold transition-colors duration-200 ${
-                  location.pathname === link.to ? 'text-cyan-400' : 'text-slate-400 group-hover:text-slate-100'
+                <span className={`text-sm transition-colors duration-200 ${
+                  location.pathname === link.to ? 'text-white font-medium' : 'text-zinc-400'
                 }`}>
                   {link.label}
                 </span>
-                {location.pathname === link.to && (
-                  <motion.div 
-                    layoutId="nav-underline"
-                    className="absolute bottom-0 left-4 right-4 h-0.5 bg-cyan-400 rounded-full shadow-[0_0_8px_#22d3ee]"
-                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                  />
-                )}
               </Link>
             ))}
           </div>
 
-          <div className="flex items-center gap-2 md:gap-4">
+          <div className="flex-1" />
+
+          <div className="flex items-center gap-3 md:gap-4">
             {user ? (
-              <div className="flex items-center gap-2 md:gap-4">
-                <Link to="/profile" className="flex items-center gap-2 group">
-                  <motion.div 
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="h-9 w-9 rounded-full bg-slate-700 overflow-hidden border border-slate-600 group-hover:border-cyan-400 transition-colors ring-2 ring-transparent group-hover:ring-cyan-400/20 shadow-sm"
-                  >
+              <div className="flex items-center gap-3">
+                {isPublicRoute && (
+                  <Link to="/dashboard" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors hidden sm:block">
+                    Dashboard
+                  </Link>
+                )}
+                <Link to="/settings" className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-zinc-900 overflow-hidden border border-zinc-800 transition-colors hover:border-zinc-500">
                     {user.photoURL ? (
                       <img src={user.photoURL} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
                     ) : (
-                      <UserIcon className="h-full w-full p-2 text-white bg-slate-800" />
+                      <UserIcon className="h-full w-full p-1.5 text-zinc-400" />
                     )}
-                  </motion.div>
+                  </div>
                 </Link>
-                <motion.button 
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
+                <button 
                   onClick={logout} 
-                  className="p-2 text-slate-400 hover:text-red-400 transition-colors hidden sm:block"
+                  className="p-1.5 text-zinc-500 hover:text-zinc-300 transition-colors hidden sm:block"
                   title="Sign Out"
                 >
-                  <LogOut className="h-5 w-5" />
-                </motion.button>
+                  <LogOut className="h-4 w-4" />
+                </button>
               </div>
             ) : (
-              <motion.button 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleLogin}
-                className="bg-gradient-to-r from-indigo-500 to-cyan-500 text-white px-5 py-2 rounded-xl text-sm font-semibold hover:opacity-90 transition-all shadow-md shadow-indigo-500/10 disabled:opacity-50"
-                disabled={loading}
-              >
-                Access Console
-              </motion.button>
+              <div className="flex items-center gap-3">
+                <Link to="/login" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">
+                  Log In
+                </Link>
+                <Link 
+                  to="/register"
+                  className="bg-white text-black px-4 py-1.5 rounded-md text-sm font-medium hover:bg-zinc-200 transition-all disabled:opacity-50"
+                >
+                  Sign Up
+                </Link>
+              </div>
             )}
           </div>
         </div>
@@ -173,16 +170,12 @@ const BottomNavigation = () => {
       { to: "/wallet", icon: DollarSign, label: 'Billing' },
     ] : []),
     { to: "/community", icon: Globe, label: 'Lobby' },
-    { to: user ? "/profile" : "/dashboard", icon: user ? UserIcon : LogOut, label: user ? 'Profile' : 'Get Started' }
+    { to: user ? "/settings" : "/dashboard", icon: user ? UserIcon : LogOut, label: user ? 'Profile' : 'Get Started' }
   ];
 
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 w-full z-50 pointer-events-auto">
-      <motion.div 
-        initial={{ y: 50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="bg-[#070b14]/95 backdrop-blur-2xl border-t border-slate-800 flex items-center justify-around py-2.5 pb-6 px-4 ring-1 ring-white/5"
-      >
+      <div className="bg-black/90 backdrop-blur-xl border-t border-zinc-800 flex items-center justify-around py-3 pb-6 px-4">
         {bottomLinks.map((link) => {
           const isActive = location.pathname === link.to;
           return (
@@ -190,36 +183,30 @@ const BottomNavigation = () => {
               key={link.to} 
               to={link.to}
               className={cn(
-                "relative flex flex-col items-center justify-center flex-1 py-1 px-2 rounded-xl transition-all duration-300",
-                isActive ? "text-cyan-400" : "text-slate-400 hover:text-slate-200"
+                "relative flex flex-col items-center justify-center flex-1 py-1 px-2 rounded-lg transition-all duration-300",
+                isActive ? "text-white" : "text-zinc-500 hover:text-zinc-300"
               )}
             >
               {isActive && (
-                <motion.div 
-                  layoutId="activeTab"
-                  className="absolute inset-0 bg-slate-800/40 rounded-xl -z-10 border border-slate-700/30"
-                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                />
+                <div className="absolute inset-0 bg-zinc-900 rounded-lg -z-10" />
               )}
-              <link.icon className={cn("h-5 w-5 mb-1 transition-transform duration-300", isActive && "scale-110")} />
-              <span className="text-[10px] font-medium tracking-tight font-sans">{link.label}</span>
-              {isActive && (
-                <motion.div 
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="absolute -bottom-1 w-1 h-0.5 rounded-full bg-cyan-400 shadow-[0_0_6px_#22d3ee]"
-                />
-              )}
+              <link.icon className="h-5 w-5 mb-1" />
+              <span className="text-[10px] font-medium tracking-tight">{link.label}</span>
             </Link>
           );
         })}
-      </motion.div>
+      </div>
     </div>
   );
 };
 
 // Pages
 import Home from './pages/Home';
+import Features from './pages/Features';
+import Pricing from './pages/Pricing';
+import Docs from './pages/Docs';
+import Login from './pages/Login';
+import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import CreateProject from './pages/CreateProject';
 import ProjectDetails from './pages/ProjectDetails';
@@ -237,14 +224,19 @@ const AnimatedRoutes = () => {
       <motion.div key={location.pathname} className="w-full">
         <Routes location={location}>
           <Route path="/" element={<PageTransition><Home /></PageTransition>} />
+          <Route path="/features" element={<PageTransition><Features /></PageTransition>} />
+          <Route path="/pricing" element={<PageTransition><Pricing /></PageTransition>} />
+          <Route path="/docs" element={<PageTransition><Docs /></PageTransition>} />
+          <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
+          <Route path="/register" element={<PageTransition><Register /></PageTransition>} />
           <Route path="/dashboard" element={<PageTransition><Dashboard /></PageTransition>} />
-          <Route path="/project/new" element={<PageTransition><CreateProject /></PageTransition>} />
-          <Route path="/project/:projectId" element={<PageTransition><ProjectDetails /></PageTransition>} />
-          <Route path="/project/:projectId/deploy" element={<PageTransition><DeployService /></PageTransition>} />
+          <Route path="/projects/new" element={<PageTransition><CreateProject /></PageTransition>} />
+          <Route path="/projects/:projectId/*" element={<PageTransition><ProjectDetails /></PageTransition>} />
+          <Route path="/projects/:projectId/deploy" element={<PageTransition><DeployService /></PageTransition>} />
           <Route path="/service/:serviceId" element={<PageTransition><ServiceConsole /></PageTransition>} />
           <Route path="/community" element={<PageTransition><Community /></PageTransition>} />
           <Route path="/wallet" element={<PageTransition><Wallet /></PageTransition>} />
-          <Route path="/profile" element={<PageTransition><Profile /></PageTransition>} />
+          <Route path="/settings" element={<PageTransition><Profile /></PageTransition>} />
           <Route path="/admin" element={<PageTransition><AdminDashboard /></PageTransition>} />
           {/* Fallback to dashboard */}
           <Route path="*" element={<PageTransition><Home /></PageTransition>} />
@@ -325,11 +317,8 @@ export default function App() {
   const authValue = { user, profile, loading, login, logout, updateGithub };
 
   if (loading) return (
-    <div className="h-screen w-full flex items-center justify-center bg-[#050810]">
-      <div className="flex flex-col items-center gap-4">
-        <Terminal className="h-10 w-10 text-cyan-400 animate-spin" />
-        <p className="text-slate-400 font-medium font-mono text-xs uppercase tracking-widest">Spinning up container pods...</p>
-      </div>
+    <div className="h-screen w-full flex items-center justify-center bg-black">
+      <Loader2 className="h-6 w-6 text-zinc-500 animate-spin" />
     </div>
   );
 
@@ -337,15 +326,12 @@ export default function App() {
     <AuthContext.Provider value={authValue}>
       <BrowserRouter>
         <ScrollToTop />
-        <div className="min-h-screen bg-[#050810] text-slate-100 font-sans selection:bg-cyan-500/25 selection:text-cyan-200">
+        <div className="min-h-screen bg-black text-zinc-100 font-sans selection:bg-zinc-800 selection:text-white">
           <Navbar />
           <main className="flex-grow pb-24 md:pb-0">
             <React.Suspense fallback={
-              <div className="flex items-center justify-center min-h-[60vh] bg-[#050810]">
-                <div className="flex flex-col items-center gap-4">
-                  <Terminal className="h-8 w-8 text-cyan-400 animate-pulse" />
-                  <p className="text-xs font-mono text-slate-500 tracking-wider">Syncing Cluster Node...</p>
-                </div>
+              <div className="flex items-center justify-center min-h-[60vh] bg-black">
+                <Loader2 className="h-6 w-6 text-zinc-500 animate-spin" />
               </div>
             }>
               <AnimatedRoutes />
