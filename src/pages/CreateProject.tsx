@@ -71,7 +71,7 @@ export default function CreateProject() {
           Create a new Project
         </h1>
         <p className="text-text-secondary text-sm">
-          Projects allow you to organize your deployments and deployments.
+          Projects allow you to organize your deployments and custom domains.
         </p>
       </div>
 
@@ -89,9 +89,6 @@ export default function CreateProject() {
               Project Name
             </label>
             <div className="flex rounded-md overflow-hidden border border-border focus-within:border-zinc-500 transition-colors">
-              <span className="flex items-center px-3 bg-card text-muted text-sm border-r border-border">
-                kontyra.name.ng/
-              </span>
               <input
                 id="projectName"
                 type="text"
@@ -135,7 +132,7 @@ export default function CreateProject() {
                   onClick={() => setClusterRegion(reg.id)}
                   className={`flex flex-col items-start p-3 border rounded-md text-left transition-colors ${
                     clusterRegion === reg.id
-                      ? 'border-white bg-card text-text-primary'
+                      ? 'border-primary bg-primary/10 text-primary'
                       : 'border-border hover:border-zinc-600 bg-background text-text-secondary'
                   }`}
                 >
@@ -154,7 +151,7 @@ export default function CreateProject() {
           <button
             type="button"
             onClick={() => navigate('/dashboard')}
-            className="px-4 py-2 border border-border hover:bg-card text-zinc-300 rounded-md text-sm font-medium transition-colors"
+            className="px-4 py-2 bg-card border border-border hover:bg-zinc-800 text-text-primary rounded-md text-sm font-medium transition-colors"
           >
             Cancel
           </button>

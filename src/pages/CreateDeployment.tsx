@@ -309,7 +309,7 @@ export default function CreateDeployment() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16 min-h-screen">
       <Link 
-        to={`/project/${projectId}`} 
+        to={`/projects/${projectId}`} 
         className="inline-flex items-center gap-2 text-sm text-text-secondary hover:text-text-primary transition-colors mb-8"
       >
         <ArrowLeft className="h-4 w-4" />
@@ -317,7 +317,7 @@ export default function CreateDeployment() {
       </Link>
 
       <div className="mb-8">
-        <h1 className="text-3xl font-semibold tracking-tight text-text-primary mb-2">Deploy a new Deployment</h1>
+        <h1 className="text-3xl font-semibold tracking-tight text-text-primary mb-2">Create a new Deployment</h1>
         <p className="text-text-secondary text-sm">Configure your deployment details and source code to deploy.</p>
       </div>
 
@@ -345,7 +345,7 @@ export default function CreateDeployment() {
                   }}
                   className={`flex flex-col items-center justify-center p-4 border rounded-md transition-colors ${
                     deploymentType === stack.type 
-                      ? 'border-white bg-card text-text-primary' 
+                      ? 'border-primary bg-primary/10 text-primary' 
                       : 'border-border hover:border-zinc-600 bg-background text-text-secondary'
                   }`}
                 >
@@ -514,8 +514,8 @@ export default function CreateDeployment() {
         <div className="flex justify-end gap-3">
           <button
             type="button"
-            onClick={() => navigate(`/project/${projectId}`)}
-            className="px-4 py-2 border border-border hover:bg-card text-zinc-300 rounded-md text-sm font-medium transition-colors"
+            onClick={() => navigate(`/projects/${projectId}`)}
+            className="px-4 py-2 bg-card border border-border hover:bg-zinc-800 text-text-primary rounded-md text-sm font-medium transition-colors"
           >
             Cancel
           </button>

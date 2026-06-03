@@ -284,7 +284,7 @@ export default function DeploymentDetails() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 min-h-screen">
       <Link 
-        to={`/project/${deployment.projectId}`} 
+        to={`/projects/${deployment.projectId}`} 
         className="inline-flex items-center gap-2 text-sm text-text-secondary hover:text-text-primary transition-colors mb-6"
       >
         <ArrowLeft className="h-4 w-4" />
