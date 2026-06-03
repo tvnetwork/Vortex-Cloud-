@@ -233,16 +233,41 @@ export default function DeployService() {
         ? gitBranch.trim() 
         : '';
 
+      let backendPort = serviceType === 'web_service' ? 3000 : 0;
+      let deployStatus = 'deploying';
+      
+      // CALL THE REAL BACKEND DEPLOY API
+      if (serviceType === 'web_service' || serviceType === 'static_site') {
+        try {
+          const repoUrl = finalRepo.startsWith('http') ? finalRepo : `https://${finalRepo}`;
+          const res = await fetch('/api/deploy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ repoUrl, subdomain: hostName.split('.')[0] })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            backendPort = data.port || backendPort;
+          } else {
+             console.error("Deploy API error", await res.text());
+             deployStatus = 'failed';
+          }
+        } catch (backendErr) {
+          console.error("Backend Deploy Fetch Error:", backendErr);
+          deployStatus = 'failed';
+        }
+      }
+
       // 1. Create Service document
       const serviceRef = await addDoc(collection(db, 'services'), {
         projectId,
         ownerId: user.uid,
         name: serviceName.trim(),
         type: serviceType,
-        status: 'deploying',
+        status: deployStatus,
         repository: finalRepo,
         branch: finalBranch,
-        port: serviceType === 'web_service' ? 3000 : 0,
+        port: backendPort,
         domain: hostName,
         endpoint: endpointVal,
         createdAt: serverTimestamp()

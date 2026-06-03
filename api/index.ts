@@ -2,8 +2,50 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import ogs from "open-graph-scraper-lite";
+import httpProxy from "http-proxy";
+import portfinder from "portfinder";
+import { spawn } from "child_process";
+import fs from "fs/promises";
+import path from "path";
+import os from "os";
 
 const app = express();
+
+// Service map (subdomain -> port)
+const deployedServices = new Map<string, number>();
+
+// Create proxy server
+const proxy = httpProxy.createProxyServer({
+  ws: true,
+  xfwd: true
+});
+
+proxy.on("error", (err, req, res) => {
+  console.error("Proxy error:", err);
+  if (res && (res as any).writeHead) {
+    (res as any).writeHead(502, { "Content-Type": "text/plain" });
+    (res as any).end("Bad Gateway - Service is down or starting");
+  }
+});
+
+// Intercept middleware for reverse proxying
+app.use((req, res, next) => {
+  const host = req.headers.host;
+  if (!host) return next();
+
+  if (host.includes(".deploy.kontyra.name.ng") || host.includes(".vortex.dev")) {
+    const subdomain = host.split(".")[0];
+    const port = deployedServices.get(subdomain);
+    
+    if (port) {
+      return proxy.web(req, res, { target: `http://127.0.0.1:${port}` });
+    } else {
+      res.status(404).send("Service not found or not deployed yet.");
+      return;
+    }
+  }
+  next();
+});
 
 // Store for pending OAuth connections mapped by Firebase UID
 const pendingOAuthConnections = new Map<string, { username: string; token: string; timestamp: number }>();
@@ -24,6 +66,54 @@ app.use(express.json());
 // API Routes
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
+});
+
+app.post("/api/deploy", async (req, res) => {
+  const { repoUrl, subdomain } = req.body;
+  if (!repoUrl || !subdomain) {
+    return res.status(400).json({ error: "repoUrl and subdomain are required" });
+  }
+
+  try {
+    const port = await portfinder.getPortPromise();
+    const workDir = await fs.mkdtemp(path.join(os.tmpdir(), `vortex-${subdomain}-`));
+    
+    // Respond immediately, processing happens in background
+    res.json({ message: "Deployment started", subdomain, port, workDir });
+
+    // Background process
+    console.log(`[Deploy] Cloning ${repoUrl} to ${workDir}`);
+    const cloneProcess = spawn("git", ["clone", repoUrl, "."], { cwd: workDir });
+    
+    cloneProcess.on("close", (code) => {
+      if (code !== 0) return console.error(`Git clone failed for ${subdomain}`);
+      
+      console.log(`[Deploy] Running npm install for ${subdomain}`);
+      const installProcess = spawn(/^win/.test(process.platform) ? "npm.cmd" : "npm", ["install"], { cwd: workDir });
+      
+      installProcess.on("close", (code) => {
+        if (code !== 0) return console.error(`NPM install failed for ${subdomain}`);
+        
+        console.log(`[Deploy] Starting app for ${subdomain} on port ${port}`);
+        // Provide standard PORT env var for the app
+        const startProcess = spawn(/^win/.test(process.platform) ? "npm.cmd" : "npm", ["start"], { 
+          cwd: workDir,
+          env: { ...process.env, PORT: port.toString() } 
+        });
+
+        startProcess.stdout.on("data", (data) => console.log(`[${subdomain}] ${data}`));
+        startProcess.stderr.on("data", (data) => console.error(`[${subdomain}] ${data}`));
+
+        // Register the service in the proxy map
+        deployedServices.set(subdomain, port);
+        console.log(`[Deploy] ${subdomain} is now live on port ${port}`);
+      });
+    });
+
+  } catch (error) {
+    console.error("Deploy error:", error);
+    res.status(500).json({ error: "Failed to initiate deployment" });
+  }
 });
 
 // Polling connection status endpoint
