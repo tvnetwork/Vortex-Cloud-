@@ -195,7 +195,7 @@ export default function Profile() {
   if (!user || !profile) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-zinc-500" />
+        <div className="animate-spin rounded-[var(--radius-pill)] h-8 w-8 border-b-2 border-zinc-500" />
       </div>
     );
   }
@@ -203,23 +203,23 @@ export default function Profile() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 min-h-screen space-y-12">
       <div className="space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight text-white">Settings</h1>
-        <p className="text-sm text-zinc-400">Manage your personal account settings and integrations.</p>
+        <h1 className="text-3xl font-semibold tracking-tight text-text-primary">Settings</h1>
+        <p className="text-sm text-text-secondary">Manage your personal account settings and integrations.</p>
       </div>
 
       <div className="space-y-8">
-        <div className="border border-zinc-800 rounded-lg overflow-hidden bg-black">
+        <div className="border border-border rounded-[var(--radius-card)] overflow-hidden bg-background">
           <div className="p-6 flex flex-col md:flex-row items-center gap-6">
-            <div className="h-20 w-20 rounded-full bg-zinc-900 border border-zinc-800 overflow-hidden shrink-0">
+            <div className="h-20 w-20 rounded-[var(--radius-pill)] bg-card border border-border overflow-hidden shrink-0">
               {user.photoURL ? (
                 <img src={user.photoURL} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
               ) : (
-                <Terminal className="h-full w-full p-4 text-zinc-500" />
+                <Terminal className="h-full w-full p-4 text-muted" />
               )}
             </div>
             <div className="space-y-1 text-center md:text-left">
-              <h2 className="text-xl font-medium text-white">{profile.displayName}</h2>
-              <div className="flex items-center gap-2 text-sm text-zinc-400 bg-zinc-900 px-3 py-1.5 rounded-md border border-zinc-800 w-fit mx-auto md:mx-0">
+              <h2 className="text-xl font-medium text-text-primary">{profile.displayName}</h2>
+              <div className="flex items-center gap-2 text-sm text-text-secondary bg-card px-3 py-1.5 rounded-md border border-border w-fit mx-auto md:mx-0">
                 <Mail className="h-4 w-4" />
                 <span>{profile.email}</span>
               </div>
@@ -227,25 +227,25 @@ export default function Profile() {
           </div>
         </div>
 
-        <div className="border border-zinc-800 rounded-lg bg-black overflow-hidden">
-          <div className="px-6 py-4 border-b border-zinc-800 bg-zinc-950">
-            <h3 className="text-lg font-medium text-white flex items-center gap-2">
+        <div className="border border-border rounded-[var(--radius-card)] bg-background overflow-hidden">
+          <div className="px-6 py-4 border-b border-border bg-surface">
+            <h3 className="text-lg font-medium text-text-primary flex items-center gap-2">
               <Github className="h-5 w-5" />
               GitHub Integration
             </h3>
           </div>
           <div className="p-6 space-y-6">
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm text-text-secondary">
               Link your GitHub account to enable automated deployments and repository synchronization.
             </p>
             
             {profile.githubUsername ? (
-              <div className="flex items-center justify-between p-4 border border-zinc-800 rounded-md bg-zinc-900">
+              <div className="flex items-center justify-between p-4 border border-border rounded-md bg-card">
                 <div className="flex items-center gap-3">
-                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <CheckCircle className="h-5 w-5 text-success" />
                   <div>
-                    <p className="text-sm font-medium text-white">@{profile.githubUsername}</p>
-                    <p className="text-xs text-zinc-500">Connected</p>
+                    <p className="text-sm font-medium text-text-primary">@{profile.githubUsername}</p>
+                    <p className="text-xs text-muted">Connected</p>
                   </div>
                 </div>
                 <button
@@ -257,7 +257,7 @@ export default function Profile() {
                     setGitUsername('');
                     setIsConnectingOAuth(false);
                   }}
-                  className="text-sm text-red-500 hover:text-red-400 font-medium"
+                  className="text-sm text-error hover:text-red-400 font-medium"
                 >
                   Disconnect
                 </button>
@@ -268,7 +268,7 @@ export default function Profile() {
                   type="button"
                   disabled={isConnectingOAuth}
                   onClick={handleConnectOAuth}
-                  className="bg-white text-black hover:bg-zinc-200 disabled:opacity-50 font-medium py-2.5 px-4 rounded-md text-sm transition-colors flex items-center gap-2"
+                  className="bg-primary text-text-primary hover:bg-secondary hover:bg-zinc-200 disabled:opacity-50 font-medium py-2.5 px-4 rounded-md text-sm transition-colors flex items-center gap-2"
                 >
                   {isConnectingOAuth ? (
                     <><RefreshCw className="h-4 w-4 animate-spin" /> Connecting...</>
@@ -276,9 +276,9 @@ export default function Profile() {
                     <><Github className="h-4 w-4" /> Connect with GitHub</>
                   )}
                 </button>
-                {oauthError && <p className="text-sm text-red-500">{oauthError}</p>}
+                {oauthError && <p className="text-sm text-error">{oauthError}</p>}
                 {isConfigured === false && (
-                  <p className="text-sm text-yellow-500">
+                  <p className="text-sm text-warning">
                     GitHub OAuth App credentials are not configured.
                   </p>
                 )}
@@ -287,15 +287,15 @@ export default function Profile() {
           </div>
         </div>
 
-        <div className="border border-zinc-800 rounded-lg bg-black overflow-hidden">
-          <div className="px-6 py-4 border-b border-zinc-800 bg-zinc-950">
-            <h3 className="text-lg font-medium text-white flex items-center gap-2">
+        <div className="border border-border rounded-[var(--radius-card)] bg-background overflow-hidden">
+          <div className="px-6 py-4 border-b border-border bg-surface">
+            <h3 className="text-lg font-medium text-text-primary flex items-center gap-2">
               <Key className="h-5 w-5" />
               API Tokens
             </h3>
           </div>
           <div className="p-6 space-y-6">
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm text-text-secondary">
               Personal API tokens to interact with the Vortex platform programmatically.
             </p>
             <form onSubmit={handleAddToken} className="flex gap-3">
@@ -305,20 +305,20 @@ export default function Profile() {
                 placeholder="Token Name (e.g. CLI)"
                 value={tokenLabel}
                 onChange={(e) => setTokenLabel(e.target.value)}
-                className="flex-1 bg-black border border-zinc-800 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-zinc-500"
+                className="flex-1 bg-background border border-border rounded-md px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-zinc-500"
               />
-              <button type="submit" className="bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-md text-sm font-medium transition-colors">
+              <button type="submit" className="bg-primary text-text-primary hover:bg-secondary hover:bg-zinc-200 px-4 py-2 rounded-md text-sm font-medium transition-colors">
                 Create Token
               </button>
             </form>
             <div className="space-y-3">
               {apiTokens.map((t) => (
-                <div key={t.id} className="flex items-center justify-between p-3 border border-zinc-800 rounded-md">
+                <div key={t.id} className="flex items-center justify-between p-3 border border-border rounded-md">
                   <div className="truncate pr-4">
-                    <p className="text-sm font-medium text-white">{t.label}</p>
-                    <p className="text-xs text-zinc-500 font-mono truncate select-all">{t.token}</p>
+                    <p className="text-sm font-medium text-text-primary">{t.label}</p>
+                    <p className="text-xs text-muted font-mono truncate select-all">{t.token}</p>
                   </div>
-                  <button onClick={() => handleDeleteToken(t.id)} className="text-zinc-500 hover:text-red-500">
+                  <button onClick={() => handleDeleteToken(t.id)} className="text-muted hover:text-error">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
@@ -327,15 +327,15 @@ export default function Profile() {
           </div>
         </div>
 
-        <div className="border border-zinc-800 rounded-lg bg-black overflow-hidden">
-          <div className="px-6 py-4 border-b border-zinc-800 bg-zinc-950">
-            <h3 className="text-lg font-medium text-white flex items-center gap-2">
+        <div className="border border-border rounded-[var(--radius-card)] bg-background overflow-hidden">
+          <div className="px-6 py-4 border-b border-border bg-surface">
+            <h3 className="text-lg font-medium text-text-primary flex items-center gap-2">
               <Laptop className="h-5 w-5" />
               SSH Keys
             </h3>
           </div>
           <div className="p-6 space-y-6">
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm text-text-secondary">
               Add SSH keys to securely connect to your project environments.
             </p>
             <form onSubmit={handleAddSsh} className="space-y-4">
@@ -345,7 +345,7 @@ export default function Profile() {
                 placeholder="Key Name"
                 value={sshLabel}
                 onChange={(e) => setSshLabel(e.target.value)}
-                className="w-full bg-black border border-zinc-800 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-zinc-500"
+                className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-zinc-500"
               />
               <textarea
                 required
@@ -353,22 +353,22 @@ export default function Profile() {
                 placeholder="ssh-ed25519 AAAAC3N..."
                 value={sshValue}
                 onChange={(e) => setSshValue(e.target.value)}
-                className="w-full bg-black border border-zinc-800 rounded-md px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-zinc-500 resize-none"
+                className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-text-primary font-mono focus:outline-none focus:border-zinc-500 resize-none"
               />
               <div className="flex justify-end">
-                <button type="submit" className="bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-md text-sm font-medium transition-colors">
+                <button type="submit" className="bg-primary text-text-primary hover:bg-secondary hover:bg-zinc-200 px-4 py-2 rounded-md text-sm font-medium transition-colors">
                   Add SSH Key
                 </button>
               </div>
             </form>
-            <div className="space-y-3 pt-4 border-t border-zinc-800">
+            <div className="space-y-3 pt-4 border-t border-border">
               {sshKeys.map((key) => (
-                <div key={key.id} className="flex items-center justify-between p-3 border border-zinc-800 rounded-md">
+                <div key={key.id} className="flex items-center justify-between p-3 border border-border rounded-md">
                   <div className="truncate pr-4">
-                    <p className="text-sm font-medium text-white">{key.label}</p>
-                    <p className="text-xs text-zinc-500 font-mono truncate">{key.keyFingerprint}</p>
+                    <p className="text-sm font-medium text-text-primary">{key.label}</p>
+                    <p className="text-xs text-muted font-mono truncate">{key.keyFingerprint}</p>
                   </div>
-                  <button onClick={() => handleDeleteSsh(key.id)} className="text-zinc-500 hover:text-red-500">
+                  <button onClick={() => handleDeleteSsh(key.id)} className="text-muted hover:text-error">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>

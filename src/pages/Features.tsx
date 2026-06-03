@@ -15,32 +15,32 @@ import { Link } from 'react-router-dom';
 export default function Features() {
   const features = [
     {
-      icon: <Globe className="h-6 w-6 text-zinc-400" />,
+      icon: <Globe className="h-6 w-6 text-text-secondary" />,
       title: "Custom Domains",
       description: "Assign custom domains to your projects with automatic SSL certificate provisioning and renewal."
     },
     {
-      icon: <Github className="h-6 w-6 text-zinc-400" />,
+      icon: <Github className="h-6 w-6 text-text-secondary" />,
       title: "GitHub Integration",
       description: "Push to your repository and watch your changes deploy automatically. Every PR gets a preview URL."
     },
     {
-      icon: <Zap className="h-6 w-6 text-zinc-400" />,
+      icon: <Zap className="h-6 w-6 text-text-secondary" />,
       title: "Instant Deployments",
       description: "Global edge network ensures your deployments are live in seconds, not minutes."
     },
     {
-      icon: <Terminal className="h-6 w-6 text-zinc-400" />,
+      icon: <Terminal className="h-6 w-6 text-text-secondary" />,
       title: "Real-time Logs",
       description: "Stream build and runtime logs directly in your dashboard to debug issues instantly."
     },
     {
-      icon: <Lock className="h-6 w-6 text-zinc-400" />,
+      icon: <Lock className="h-6 w-6 text-text-secondary" />,
       title: "Environment Variables",
       description: "Securely manage secrets for production, preview, and development environments."
     },
     {
-      icon: <Activity className="h-6 w-6 text-zinc-400" />,
+      icon: <Activity className="h-6 w-6 text-text-secondary" />,
       title: "Analytics",
       description: "Built-in analytics track visitors, bandwidth, and performance metrics without extra scripts."
     }
@@ -55,7 +55,7 @@ export default function Features() {
   ];
 
   return (
-    <div className="min-h-screen bg-black text-white pt-20">
+    <div className="min-h-screen bg-background text-text-primary pt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-24">
         
         {/* Hero Section */}
@@ -63,18 +63,18 @@ export default function Features() {
           <h1 className="text-5xl md:text-6xl font-bold tracking-tight">
             Everything you need to ship.
           </h1>
-          <p className="text-xl text-zinc-400">
+          <p className="text-xl text-text-secondary">
             Deploy by Kontyra provides a complete toolset for modern frontend teams to build, deploy, and scale faster.
           </p>
         </div>
 
         {/* Frameworks */}
-        <div className="border border-zinc-800 rounded-2xl p-8 bg-zinc-950 text-center">
-          <h2 className="text-sm font-medium text-zinc-500 uppercase tracking-widest mb-8">Supported Frameworks</h2>
+        <div className="border border-border rounded-2xl p-8 bg-surface text-center">
+          <h2 className="text-sm font-medium text-muted uppercase tracking-widest mb-8">Supported Frameworks</h2>
           <div className="flex flex-wrap justify-center gap-8">
             {frameworks.map((fw, idx) => (
               <div key={idx} className="flex flex-col items-center gap-2">
-                <div className="h-16 w-16 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-2xl">
+                <div className="h-16 w-16 rounded-[var(--radius-pill)] bg-card border border-border flex items-center justify-center text-2xl">
                   {fw.icon}
                 </div>
                 <span className="text-sm font-medium text-zinc-300">{fw.name}</span>
@@ -91,13 +91,13 @@ export default function Features() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="p-6 rounded-2xl border border-zinc-800 bg-zinc-950/50 hover:bg-zinc-900/50 transition-colors"
+              className="p-6 rounded-2xl border border-border bg-surface/50 hover:bg-card/50 transition-colors"
             >
-              <div className="h-12 w-12 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-6">
+              <div className="h-12 w-12 rounded-[var(--radius-card)] bg-card border border-border flex items-center justify-center mb-6">
                 {feature.icon}
               </div>
               <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
-              <p className="text-zinc-400 text-sm leading-relaxed">
+              <p className="text-text-secondary text-sm leading-relaxed">
                 {feature.description}
               </p>
             </motion.div>
@@ -105,7 +105,7 @@ export default function Features() {
         </div>
 
         {/* CTA */}
-        <div className="border-t border-zinc-800 py-24 text-center">
+        <div className="border-t border-border py-24 text-center">
           <h2 className="text-3xl font-bold mb-6">Ready to deploy?</h2>
           <Link 
             to="/register"

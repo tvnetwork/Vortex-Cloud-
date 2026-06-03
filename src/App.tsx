@@ -85,13 +85,13 @@ const Navbar = () => {
   const activeLinks = isPublicRoute && !user ? publicLinks : dashboardLinks;
 
   return (
-    <nav className="border-b border-zinc-800 bg-black sticky top-0 z-50">
+    <nav className="border-b border-border bg-background sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-14 items-center">
           <div className="flex items-center gap-2 md:gap-4">
             <Link to="/" className="flex items-center gap-2 group">
-              <Triangle className="h-5 w-5 text-white fill-white" />
-              <span className="text-sm font-semibold tracking-tight text-white leading-tight">Deploy by Kontyra</span>
+              <Triangle className="h-5 w-5 text-text-primary fill-white" />
+              <span className="text-sm font-semibold tracking-tight text-text-primary leading-tight">Deploy by Kontyra</span>
             </Link>
           </div>
 
@@ -100,10 +100,10 @@ const Navbar = () => {
               <Link 
                 key={link.to}
                 to={link.to} 
-                className="relative px-3 py-1.5 rounded-md transition-colors duration-200 hover:bg-zinc-900"
+                className="relative px-3 py-1.5 rounded-md transition-colors duration-200 hover:bg-card"
               >
                 <span className={`text-sm transition-colors duration-200 ${
-                  location.pathname === link.to ? 'text-white font-medium' : 'text-zinc-400'
+                  location.pathname === link.to ? 'text-text-primary font-medium' : 'text-text-secondary'
                 }`}>
                   {link.label}
                 </span>
@@ -117,22 +117,22 @@ const Navbar = () => {
             {user ? (
               <div className="flex items-center gap-3">
                 {isPublicRoute && (
-                  <Link to="/dashboard" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors hidden sm:block">
+                  <Link to="/dashboard" className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors hidden sm:block">
                     Dashboard
                   </Link>
                 )}
                 <Link to="/settings" className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-full bg-zinc-900 overflow-hidden border border-zinc-800 transition-colors hover:border-zinc-500">
+                  <div className="h-8 w-8 rounded-[var(--radius-pill)] bg-card overflow-hidden border border-border transition-colors hover:border-zinc-500">
                     {user.photoURL ? (
                       <img src={user.photoURL} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
                     ) : (
-                      <UserIcon className="h-full w-full p-1.5 text-zinc-400" />
+                      <UserIcon className="h-full w-full p-1.5 text-text-secondary" />
                     )}
                   </div>
                 </Link>
                 <button 
                   onClick={logout} 
-                  className="p-1.5 text-zinc-500 hover:text-zinc-300 transition-colors hidden sm:block"
+                  className="p-1.5 text-muted hover:text-text-secondary transition-colors hidden sm:block"
                   title="Sign Out"
                 >
                   <LogOut className="h-4 w-4" />
@@ -140,12 +140,12 @@ const Navbar = () => {
               </div>
             ) : (
               <div className="flex items-center gap-3">
-                <Link to="/login" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">
+                <Link to="/login" className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">
                   Log In
                 </Link>
                 <Link 
                   to="/register"
-                  className="bg-white text-black px-4 py-1.5 rounded-md text-sm font-medium hover:bg-zinc-200 transition-all disabled:opacity-50"
+                  className="bg-primary text-text-primary hover:bg-secondary px-4 py-1.5 rounded-md text-sm font-medium hover:bg-zinc-200 transition-all disabled:opacity-50"
                 >
                   Sign Up
                 </Link>
@@ -175,7 +175,7 @@ const BottomNavigation = () => {
 
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 w-full z-50 pointer-events-auto">
-      <div className="bg-black/90 backdrop-blur-xl border-t border-zinc-800 flex items-center justify-around py-3 pb-6 px-4">
+      <div className="bg-background/90 backdrop-blur-xl border-t border-border flex items-center justify-around py-3 pb-6 px-4">
         {bottomLinks.map((link) => {
           const isActive = location.pathname === link.to;
           return (
@@ -183,12 +183,12 @@ const BottomNavigation = () => {
               key={link.to} 
               to={link.to}
               className={cn(
-                "relative flex flex-col items-center justify-center flex-1 py-1 px-2 rounded-lg transition-all duration-300",
-                isActive ? "text-white" : "text-zinc-500 hover:text-zinc-300"
+                "relative flex flex-col items-center justify-center flex-1 py-1 px-2 rounded-[var(--radius-card)] transition-all duration-300",
+                isActive ? "text-text-primary" : "text-muted hover:text-text-secondary"
               )}
             >
               {isActive && (
-                <div className="absolute inset-0 bg-zinc-900 rounded-lg -z-10" />
+                <div className="absolute inset-0 bg-card rounded-[var(--radius-card)] -z-10" />
               )}
               <link.icon className="h-5 w-5 mb-1" />
               <span className="text-[10px] font-medium tracking-tight">{link.label}</span>
@@ -317,8 +317,8 @@ export default function App() {
   const authValue = { user, profile, loading, login, logout, updateGithub };
 
   if (loading) return (
-    <div className="h-screen w-full flex items-center justify-center bg-black">
-      <Loader2 className="h-6 w-6 text-zinc-500 animate-spin" />
+    <div className="h-screen w-full flex items-center justify-center bg-background">
+      <Loader2 className="h-6 w-6 text-muted animate-spin" />
     </div>
   );
 
@@ -326,12 +326,12 @@ export default function App() {
     <AuthContext.Provider value={authValue}>
       <BrowserRouter>
         <ScrollToTop />
-        <div className="min-h-screen bg-black text-zinc-100 font-sans selection:bg-zinc-800 selection:text-white">
+        <div className="min-h-screen bg-background text-text-primary font-sans selection:bg-zinc-800 selection:text-text-primary">
           <Navbar />
           <main className="flex-grow pb-24 md:pb-0">
             <React.Suspense fallback={
-              <div className="flex items-center justify-center min-h-[60vh] bg-black">
-                <Loader2 className="h-6 w-6 text-zinc-500 animate-spin" />
+              <div className="flex items-center justify-center min-h-[60vh] bg-background">
+                <Loader2 className="h-6 w-6 text-muted animate-spin" />
               </div>
             }>
               <AnimatedRoutes />

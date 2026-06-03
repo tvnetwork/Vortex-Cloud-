@@ -66,10 +66,10 @@ export default function AdminDashboard() {
   if (!user || !profile || !isAuthorised) {
     return (
       <div className="max-w-md mx-auto px-4 py-20 text-center space-y-6">
-        <Lock className="h-12 w-12 text-zinc-500 mx-auto" />
-        <h2 className="text-xl font-medium text-white">Access Denied</h2>
-        <p className="text-zinc-400 text-sm">You do not have administrative privileges to view this page.</p>
-        <Link to="/dashboard" className="inline-block bg-white text-black font-medium px-4 py-2 rounded-md text-sm transition-colors hover:bg-zinc-200">
+        <Lock className="h-12 w-12 text-muted mx-auto" />
+        <h2 className="text-xl font-medium text-text-primary">Access Denied</h2>
+        <p className="text-text-secondary text-sm">You do not have administrative privileges to view this page.</p>
+        <Link to="/dashboard" className="inline-block bg-primary text-text-primary hover:bg-secondary font-medium px-4 py-2 rounded-md text-sm transition-colors hover:bg-zinc-200">
           Return Home
         </Link>
       </div>
@@ -78,56 +78,56 @@ export default function AdminDashboard() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 min-h-screen space-y-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-6 border-b border-zinc-800">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-6 border-b border-border">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-xs font-medium text-zinc-400 mb-2">
+          <div className="flex items-center gap-2 text-xs font-medium text-text-secondary mb-2">
             <ShieldCheck className="h-4 w-4" />
             <span>Administrator Access</span>
           </div>
-          <h1 className="text-3xl font-semibold tracking-tight text-white">Platform Metrics</h1>
-          <p className="text-zinc-400 text-sm">Monitor global platform health and resource utilization.</p>
+          <h1 className="text-3xl font-semibold tracking-tight text-text-primary">Platform Metrics</h1>
+          <p className="text-text-secondary text-sm">Monitor global platform health and resource utilization.</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-black border border-zinc-800 p-6 rounded-lg space-y-4">
-          <div className="flex items-center justify-between text-zinc-400">
+        <div className="bg-background border border-border p-6 rounded-[var(--radius-card)] space-y-4">
+          <div className="flex items-center justify-between text-text-secondary">
             <span className="text-sm font-medium">CPU Usage</span>
             <Cpu className="h-4 w-4" />
           </div>
-          <p className="text-2xl font-semibold text-white">{globalMetrics.clusterCpuUsage}%</p>
+          <p className="text-2xl font-semibold text-text-primary">{globalMetrics.clusterCpuUsage}%</p>
         </div>
 
-        <div className="bg-black border border-zinc-800 p-6 rounded-lg space-y-4">
-          <div className="flex items-center justify-between text-zinc-400">
+        <div className="bg-background border border-border p-6 rounded-[var(--radius-card)] space-y-4">
+          <div className="flex items-center justify-between text-text-secondary">
             <span className="text-sm font-medium">RAM Usage</span>
             <HardDrive className="h-4 w-4" />
           </div>
-          <p className="text-2xl font-semibold text-white">{globalMetrics.clusterRamUsage}%</p>
+          <p className="text-2xl font-semibold text-text-primary">{globalMetrics.clusterRamUsage}%</p>
         </div>
 
-        <div className="bg-black border border-zinc-800 p-6 rounded-lg space-y-4">
-          <div className="flex items-center justify-between text-zinc-400">
+        <div className="bg-background border border-border p-6 rounded-[var(--radius-card)] space-y-4">
+          <div className="flex items-center justify-between text-text-secondary">
             <span className="text-sm font-medium">Total Services</span>
             <Server className="h-4 w-4" />
           </div>
-          <p className="text-2xl font-semibold text-white">{globalMetrics.totalServicesCount}</p>
+          <p className="text-2xl font-semibold text-text-primary">{globalMetrics.totalServicesCount}</p>
         </div>
 
-        <div className="bg-black border border-zinc-800 p-6 rounded-lg space-y-4">
-          <div className="flex items-center justify-between text-zinc-400">
+        <div className="bg-background border border-border p-6 rounded-[var(--radius-card)] space-y-4">
+          <div className="flex items-center justify-between text-text-secondary">
             <span className="text-sm font-medium">Active Users</span>
             <Globe className="h-4 w-4" />
           </div>
-          <p className="text-2xl font-semibold text-white">{globalMetrics.activeUsersCount}</p>
+          <p className="text-2xl font-semibold text-text-primary">{globalMetrics.activeUsersCount}</p>
         </div>
       </div>
 
-      <div className="bg-black border border-zinc-800 rounded-lg overflow-hidden flex flex-col h-[500px]">
-        <div className="bg-zinc-950 border-b border-zinc-800 px-4 py-3 flex items-center justify-between text-zinc-500 text-sm font-mono">
+      <div className="bg-background border border-border rounded-[var(--radius-card)] overflow-hidden flex flex-col h-[500px]">
+        <div className="bg-surface border-b border-border px-4 py-3 flex items-center justify-between text-muted text-sm font-mono">
           <span>system.log</span>
           <span className="flex items-center gap-2 text-xs">
-            <span className="w-2 h-2 rounded-full bg-green-500" />
+            <span className="w-2 h-2 rounded-[var(--radius-pill)] bg-success" />
             Live
           </span>
         </div>

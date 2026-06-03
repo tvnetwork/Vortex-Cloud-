@@ -113,7 +113,7 @@ export default function LanguageSwitcher() {
                     placeholder="Search languages..."
                     value={search}
                     onChange={e => setSearch(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all font-medium"
+                    className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-100 rounded-[var(--radius-modal)] text-sm focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all font-medium"
                   />
                 </div>
               </div>
@@ -124,9 +124,9 @@ export default function LanguageSwitcher() {
                     <button
                       key={lang.code}
                       onClick={() => changeLanguage(lang.code)}
-                      className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all text-sm font-bold ${
+                      className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-[var(--radius-modal)] transition-all text-sm font-bold ${
                         i18n.language === lang.code 
-                          ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' 
+                          ? 'bg-indigo-600 text-text-primary shadow-lg shadow-indigo-100' 
                           : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                       }`}
                     >

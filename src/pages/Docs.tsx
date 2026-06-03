@@ -31,22 +31,22 @@ export default function Docs() {
   ];
 
   return (
-    <div className="min-h-screen bg-black text-white pt-14 border-t border-zinc-800">
+    <div className="min-h-screen bg-background text-text-primary pt-14 border-t border-border">
       <div className="max-w-7xl mx-auto flex">
         
         {/* Sidebar */}
-        <aside className="w-64 border-r border-zinc-800 hidden lg:block h-[calc(100vh-3.5rem)] sticky top-14 overflow-y-auto p-6">
+        <aside className="w-64 border-r border-border hidden lg:block h-[calc(100vh-3.5rem)] sticky top-14 overflow-y-auto p-6">
           <div className="space-y-8">
             {sections.map((section, idx) => (
               <div key={idx} className="space-y-3">
-                <h4 className="font-medium text-sm text-white flex items-center gap-2">
+                <h4 className="font-medium text-sm text-text-primary flex items-center gap-2">
                   {section.icon}
                   {section.title}
                 </h4>
-                <ul className="space-y-2 border-l border-zinc-800 ml-2.5 pl-4">
+                <ul className="space-y-2 border-l border-border ml-2.5 pl-4">
                   {section.items.map((item, iIdx) => (
                     <li key={iIdx}>
-                      <a href="#" className="text-sm text-zinc-400 hover:text-white transition-colors">
+                      <a href="#" className="text-sm text-text-secondary hover:text-text-primary transition-colors">
                         {item}
                       </a>
                     </li>
@@ -61,18 +61,18 @@ export default function Docs() {
         <main className="flex-1 p-8 lg:p-12">
           <div className="max-w-3xl space-y-8">
             <h1 className="text-4xl font-bold tracking-tight">Documentation</h1>
-            <p className="text-lg text-zinc-400">
+            <p className="text-lg text-text-secondary">
               Learn how to deploy your applications with Deploy by Kontyra.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12">
               {sections.map((section, idx) => (
-                <div key={idx} className="border border-zinc-800 rounded-xl p-6 bg-zinc-950/50 hover:bg-zinc-900 transition-colors cursor-pointer">
-                  <div className="h-10 w-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-4 text-white">
+                <div key={idx} className="border border-border rounded-[var(--radius-modal)] p-6 bg-surface/50 hover:bg-card transition-colors cursor-pointer">
+                  <div className="h-10 w-10 rounded-[var(--radius-card)] bg-card border border-border flex items-center justify-center mb-4 text-text-primary">
                     {section.icon}
                   </div>
-                  <h3 className="text-lg font-medium text-white mb-2">{section.title}</h3>
-                  <p className="text-sm text-zinc-400">Explore guides and references for {section.title.toLowerCase()}.</p>
+                  <h3 className="text-lg font-medium text-text-primary mb-2">{section.title}</h3>
+                  <p className="text-sm text-text-secondary">Explore guides and references for {section.title.toLowerCase()}.</p>
                 </div>
               ))}
             </div>

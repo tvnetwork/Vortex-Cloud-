@@ -56,21 +56,21 @@ export default function TranslationPrompt() {
           initial={{ opacity: 0, y: 50, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 50, scale: 0.9 }}
-          className="fixed bottom-8 left-8 z-[200] max-w-sm w-full bg-gray-900 text-white p-6 rounded-[2rem] shadow-2xl overflow-hidden border border-white/10"
+          className="fixed bottom-8 left-8 z-[200] max-w-sm w-full bg-gray-900 text-text-primary p-6 rounded-[2rem] shadow-2xl overflow-hidden border border-white/10"
         >
-          <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-600/20 rounded-full -mr-12 -mt-12 blur-2xl" />
+          <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-600/20 rounded-[var(--radius-pill)] -mr-12 -mt-12 blur-2xl" />
           
           <div className="relative z-10 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-indigo-600 rounded-xl">
+                <div className="p-2 bg-indigo-600 rounded-[var(--radius-modal)]">
                   <Globe className="h-5 w-5" />
                 </div>
                 <h4 className="font-bold text-sm">Switch to {languageNames[suggestion]}?</h4>
               </div>
               <button 
                 onClick={handleDismiss}
-                className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+                className="p-1 hover:bg-white/10 rounded-[var(--radius-card)] transition-colors"
               >
                 <X className="h-4 w-4 text-gray-400" />
               </button>
@@ -83,13 +83,13 @@ export default function TranslationPrompt() {
             <div className="flex gap-3">
               <button 
                 onClick={handleSwitch}
-                className="flex-1 bg-white text-gray-900 py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-gray-100 transition-all flex items-center justify-center gap-2"
+                className="flex-1 bg-white text-gray-900 py-3 rounded-[var(--radius-modal)] text-xs font-black uppercase tracking-widest hover:bg-gray-100 transition-all flex items-center justify-center gap-2"
               >
                 <Check className="h-3.5 w-3.5" /> Switch
               </button>
               <button 
                 onClick={handleDismiss}
-                className="flex-1 bg-white/5 text-white py-3 rounded-xl text-xs font-bold hover:bg-white/10 transition-all"
+                className="flex-1 bg-white/5 text-text-primary py-3 rounded-[var(--radius-modal)] text-xs font-bold hover:bg-white/10 transition-all"
               >
                 Keep English
               </button>

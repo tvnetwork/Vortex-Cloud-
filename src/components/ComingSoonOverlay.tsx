@@ -28,19 +28,19 @@ export default function ComingSoonOverlay({
         <div className="h-20 w-20 bg-indigo-50 rounded-[2rem] flex items-center justify-center text-indigo-600 mb-8 border border-indigo-100">
           <Construction className="h-10 w-10 animate-pulse" />
         </div>
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-gray-900 text-white rounded-full text-[10px] font-black uppercase tracking-widest mb-6">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-gray-900 text-text-primary rounded-[var(--radius-pill)] text-[10px] font-black uppercase tracking-widest mb-6">
           <Lock className="h-3 w-3" /> {t('common.underConstruction')}
         </div>
         <h2 className="text-3xl font-black text-gray-900 tracking-tight mb-4">{displayTitle}</h2>
         <p className="text-gray-500 font-medium leading-relaxed mb-10">
           {displayDescription}
         </p>
-        <div className="w-full h-1 bg-gray-50 rounded-full overflow-hidden p-0.5">
+        <div className="w-full h-1 bg-gray-50 rounded-[var(--radius-pill)] overflow-hidden p-0.5">
            <motion.div 
              initial={{ width: "30%" }}
              animate={{ width: "85%" }}
              transition={{ duration: 2, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
-             className="h-full bg-indigo-500 rounded-full shadow-[0_0_12px_rgba(79,70,229,0.4)]"
+             className="h-full bg-indigo-500 rounded-[var(--radius-pill)] shadow-[0_0_12px_rgba(79,70,229,0.4)]"
            />
         </div>
         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-6">{t('common.securePortal')} v1.2</p>

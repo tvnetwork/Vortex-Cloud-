@@ -148,9 +148,9 @@ export default function LiveSupport({ inline = false }: LiveSupportProps) {
             )}
           >
             {/* Header */}
-            <div className="bg-indigo-600 p-8 text-white relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
-              <div className="absolute bottom-0 left-0 w-24 h-24 bg-indigo-400/20 rounded-full -ml-12 -mb-12 blur-xl" />
+            <div className="bg-indigo-600 p-8 text-text-primary relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-[var(--radius-pill)] -mr-16 -mt-16 blur-2xl" />
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-indigo-400/20 rounded-[var(--radius-pill)] -ml-12 -mb-12 blur-xl" />
               
               <div className="flex items-center justify-between relative z-10">
                 <div className="flex items-center gap-4">
@@ -160,7 +160,7 @@ export default function LiveSupport({ inline = false }: LiveSupportProps) {
                   <div>
                     <h3 className="font-bold text-base tracking-tight">{t('help.liveSupportTitle')}</h3>
                     <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <div className="h-2 w-2 rounded-[var(--radius-pill)] bg-emerald-400 animate-pulse" />
                       <p className="text-[10px] font-bold text-indigo-100 uppercase tracking-widest leading-none">Support Agent Online</p>
                     </div>
                   </div>
@@ -169,13 +169,13 @@ export default function LiveSupport({ inline = false }: LiveSupportProps) {
                   <div className="flex items-center gap-2">
                     <button 
                       onClick={() => setIsMinimized(true)}
-                      className="p-2 hover:bg-white/20 rounded-xl transition-all duration-300"
+                      className="p-2 hover:bg-white/20 rounded-[var(--radius-modal)] transition-all duration-300"
                     >
                       <Minus className="h-5 w-5" />
                     </button>
                     <button 
                       onClick={() => setIsOpen(false)}
-                      className="p-2 hover:bg-white/20 rounded-xl transition-all duration-300"
+                      className="p-2 hover:bg-white/20 rounded-[var(--radius-modal)] transition-all duration-300"
                     >
                       <X className="h-5 w-5" />
                     </button>
@@ -202,7 +202,7 @@ export default function LiveSupport({ inline = false }: LiveSupportProps) {
                   <div className={cn(
                     "px-5 py-4 rounded-[1.5rem] text-sm leading-relaxed max-w-[90%] shadow-sm",
                     msg.sender === 'user' 
-                      ? "bg-indigo-600 text-white rounded-br-none" 
+                      ? "bg-indigo-600 text-text-primary rounded-br-none" 
                       : "bg-white border border-gray-100 text-gray-800 rounded-bl-none"
                   )}>
                     {msg.text}
@@ -215,9 +215,9 @@ export default function LiveSupport({ inline = false }: LiveSupportProps) {
               {isTyping && (
                 <div className="flex items-start">
                   <div className="bg-white border border-gray-100 px-4 py-3 rounded-2xl rounded-bl-none shadow-sm flex gap-1 items-center">
-                    <div className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <div className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <div className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    <div className="w-1.5 h-1.5 bg-gray-300 rounded-[var(--radius-pill)] animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="w-1.5 h-1.5 bg-gray-300 rounded-[var(--radius-pill)] animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="w-1.5 h-1.5 bg-gray-300 rounded-[var(--radius-pill)] animate-bounce" style={{ animationDelay: '300ms' }} />
                   </div>
                 </div>
               )}
@@ -236,7 +236,7 @@ export default function LiveSupport({ inline = false }: LiveSupportProps) {
                 <button 
                   type="submit"
                   disabled={!input.trim()}
-                  className="p-4 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 disabled:opacity-50 disabled:shadow-none translate-y-0 active:translate-y-0.5"
+                  className="p-4 bg-indigo-600 text-text-primary rounded-2xl hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 disabled:opacity-50 disabled:shadow-none translate-y-0 active:translate-y-0.5"
                 >
                   <Send className="h-5 w-5" />
                 </button>
@@ -259,7 +259,7 @@ export default function LiveSupport({ inline = false }: LiveSupportProps) {
               "h-16 w-16 rounded-[2rem] flex items-center justify-center shadow-[0_20px_50px_rgba(79,70,229,0.3)] transition-all duration-500 pointer-events-auto",
               isOpen && !isMinimized 
                 ? "bg-white text-indigo-600 rotate-180 opacity-0 pointer-events-none translate-y-12" 
-                : "bg-indigo-600 text-white translate-y-0 shadow-indigo-200"
+                : "bg-indigo-600 text-text-primary translate-y-0 shadow-indigo-200"
             )}
           >
             <MessageCircle className="h-8 w-8" />
@@ -273,9 +273,9 @@ export default function LiveSupport({ inline = false }: LiveSupportProps) {
           animate={{ y: 0, opacity: 1, filter: 'blur(0px)' }}
           whileHover={{ y: -5 }}
           onClick={() => setIsMinimized(false)}
-          className="absolute -top-14 right-0 bg-indigo-600 text-white px-6 py-3 rounded-2xl text-xs font-bold shadow-xl shadow-indigo-100 flex items-center gap-3 pointer-events-auto border border-indigo-500"
+          className="absolute -top-14 right-0 bg-indigo-600 text-text-primary px-6 py-3 rounded-2xl text-xs font-bold shadow-xl shadow-indigo-100 flex items-center gap-3 pointer-events-auto border border-indigo-500"
         >
-          <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+          <div className="h-2 w-2 rounded-[var(--radius-pill)] bg-emerald-400 animate-pulse" />
           {t('help.liveSupportTitle')}
         </motion.button>
       )}
