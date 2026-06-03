@@ -16,7 +16,10 @@ import {
   Lock,
   Globe,
   HardDrive,
-  GitBranch
+  GitBranch,
+  ExternalLink,
+  CheckCircle,
+  ArrowRight
 } from 'lucide-react';
 import { useAuth } from '../App';
 import { 
@@ -45,7 +48,12 @@ export default function ServiceConsole() {
   const [metric, setMetric] = useState<Metric | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const [activeTab, setActiveTab] = useState<'logs' | 'shell' | 'scaling'>('logs');
+  const [activeTab, setActiveTab] = useState<'logs' | 'shell' | 'domains' | 'scaling'>('logs');
+
+  // Custom Domain management states
+  const [customDomainInput, setCustomDomainInput] = useState('');
+  const [isVerifyingDomain, setIsVerifyingDomain] = useState(false);
+  const [domainError, setDomainError] = useState<string | null>(null);
 
   // DB Shell / API client state
   const [shellInput, setShellInput] = useState('');
@@ -55,6 +63,150 @@ export default function ServiceConsole() {
 
   // Terminal scroll helper
   const terminalEndRef = useRef<HTMLDivElement>(null);
+
+  const buildSteps = [
+    '✓ Production server compilation completed. Size: 1.2 MB',
+    '⚙ Injecting platform environment shared keys...',
+    '✓ Environment verified. Zero errors.',
+    '⚙ Deploying workload to Edge CDN edge nodes: FRA1, NRT1, SFO2',
+    '✓ SSL registration success. Domain verified: TLS 1.3',
+    '✓ Deployment cycle executed successfully! Container cluster online.'
+  ];
+
+  const buildIntervalRef = useRef<any>(null);
+  const startedAuto = useRef<string | null>(null);
+
+  const startBuildSimulation = (svcId: string, deployId: string) => {
+    if (buildIntervalRef.current) return;
+
+    const devRef = doc(db, 'deployments', deployId);
+    const svcRef = doc(db, 'services', svcId);
+
+    let currentStepIndex = 0;
+    buildIntervalRef.current = setInterval(async () => {
+      const freshSnap = await getDoc(devRef);
+      if (freshSnap.exists()) {
+        const curLogs = freshSnap.data().logs || [];
+        const nextStep = `[${new Date().toLocaleTimeString()}] ${buildSteps[currentStepIndex]}`;
+        const newLogsList = [...curLogs, nextStep];
+
+        if (currentStepIndex === buildSteps.length - 1) {
+          // Finish build
+          await updateDoc(devRef, { status: 'active', logs: newLogsList });
+          await updateDoc(svcRef, { status: 'active' });
+          if (buildIntervalRef.current) {
+            clearInterval(buildIntervalRef.current);
+            buildIntervalRef.current = null;
+          }
+        } else {
+          await updateDoc(devRef, { logs: newLogsList });
+          currentStepIndex++;
+        }
+      } else {
+        if (buildIntervalRef.current) {
+          clearInterval(buildIntervalRef.current);
+          buildIntervalRef.current = null;
+        }
+      }
+    }, 1200);
+  };
+
+  // Automatic build stream trigger for newly deployed services
+  useEffect(() => {
+    if (service && deployment && service.status === 'deploying' && startedAuto.current !== service.id) {
+      startedAuto.current = service.id;
+      startBuildSimulation(service.id, deployment.id);
+    }
+  }, [service?.status, deployment?.id]);
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (buildIntervalRef.current) {
+        clearInterval(buildIntervalRef.current);
+      }
+    };
+  }, []);
+
+  const handleAddCustomDomain = async () => {
+    if (!customDomainInput.trim() || !service) return;
+
+    if (!customDomainInput.includes('.') || customDomainInput.length < 5) {
+      setDomainError('Please enter a valid developer domain reference (e.g., example.com).');
+      return;
+    }
+
+    try {
+      const svcRef = doc(db, 'services', service.id);
+      await updateDoc(svcRef, {
+        customDomain: customDomainInput.toLowerCase().trim(),
+        customDomainStatus: 'pending'
+      });
+      setCustomDomainInput('');
+      setDomainError(null);
+    } catch (e) {
+      console.error(e);
+      setDomainError('Could not sync custom domain with Firestore backend.');
+    }
+  };
+
+  const handleVerifyCustomDomain = async () => {
+    if (!service) return;
+    setIsVerifyingDomain(true);
+    setDomainError(null);
+
+    setTimeout(async () => {
+      try {
+        const svcRef = doc(db, 'services', service.id);
+        const verifiedDomain = service.customDomain || 'custom.vortex.dev';
+        await updateDoc(svcRef, {
+          customDomainStatus: 'verified',
+          domain: verifiedDomain,
+          endpoint: `https://${verifiedDomain}`
+        });
+
+        // Append routing success to deployment logs to make it feel rich and integrated
+        if (deployment) {
+          const devRef = doc(db, 'deployments', deployment.id);
+          const freshSnap = await getDoc(devRef);
+          if (freshSnap.exists()) {
+            const curLogs = freshSnap.data().logs || [];
+            const nextStep = `[${new Date().toLocaleTimeString()}] ✓ Custom Domain DNS Bind success: https://${verifiedDomain}`;
+            await updateDoc(devRef, {
+              logs: [...curLogs, nextStep]
+            });
+          }
+        }
+
+        setIsVerifyingDomain(false);
+      } catch (e) {
+        console.error(e);
+        setDomainError('Verification failed. TXT verification code did not resolve.');
+        setIsVerifyingDomain(false);
+      }
+    }, 2000);
+  };
+
+  const handleDeleteCustomDomain = async () => {
+    if (!service) return;
+    if (!window.confirm('Are you sure you want to delete this custom domain mapping? The preview URL will revert to standard vortex host.')) return;
+
+    try {
+      const svcRef = doc(db, 'services', service.id);
+      const randId = Math.random().toString(36).substring(2, 7);
+      const hostName = `${service.name.toLowerCase()}-${randId}.vortex.dev`;
+      const originalEndpoint = `https://${hostName}`;
+
+      await updateDoc(svcRef, {
+        customDomain: null,
+        customDomainStatus: null,
+        domain: hostName,
+        endpoint: originalEndpoint
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   useEffect(() => {
     if (!user || !serviceId) return;
@@ -127,35 +279,12 @@ export default function ServiceConsole() {
       ]
     });
 
-    // Simulated step compiler
-    const buildSteps = [
-      '✓ Production server compilation completed. Size: 1.2 MB',
-      '⚙ Injecting platform environment shared keys...',
-      '✓ Environment verified. Zero errors.',
-      '⚙ Deploying workload to Edge CDN edge nodes: FRA1, NRT1, SFO2',
-      '✓ SSL registration success. Domain verified: TLS 1.3',
-      '✓ Deployment cycle executed successfully! Container cluster online.'
-    ];
-
-    let currentStepIndex = 0;
-    const interval = setInterval(async () => {
-      const freshSnap = await getDoc(devRef);
-      if (freshSnap.exists()) {
-        const curLogs = freshSnap.data().logs || [];
-        const nextStep = `[${new Date().toLocaleTimeString()}] ${buildSteps[currentStepIndex]}`;
-        const newLogsList = [...curLogs, nextStep];
-
-        if (currentStepIndex === buildSteps.length - 1) {
-          // Finish build
-          await updateDoc(devRef, { status: 'active', logs: newLogsList });
-          await updateDoc(svcRef, { status: 'active' });
-          clearInterval(interval);
-        } else {
-          await updateDoc(devRef, { logs: newLogsList });
-          currentStepIndex++;
-        }
-      }
-    }, 1500);
+    if (buildIntervalRef.current) {
+      clearInterval(buildIntervalRef.current);
+      buildIntervalRef.current = null;
+    }
+    startedAuto.current = service.id;
+    startBuildSimulation(service.id, deployment.id);
   };
 
   // SQL Query / cache operations parsing
@@ -294,10 +423,22 @@ export default function ServiceConsole() {
             </div>
 
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-mono text-slate-400">
-              <p className="flex items-center gap-1">
+              <p className="flex items-center gap-1.5">
                 <Globe className="h-3.5 w-3.5 text-slate-500" />
                 <span>Endpoint: </span>
-                <span className="text-cyan-400 select-all">{service.domain}</span>
+                {!isDatabase ? (
+                  <a
+                    href={service.endpoint && service.endpoint.startsWith('http') ? service.endpoint : `https://${service.domain}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-cyan-400 hover:text-cyan-300 select-all hover:underline flex items-center gap-1"
+                  >
+                    <span>{service.domain}</span>
+                    <ExternalLink className="h-3 w-3 inline" />
+                  </a>
+                ) : (
+                  <span className="text-cyan-400 select-all">{service.endpoint || service.domain}</span>
+                )}
               </p>
               {service.repository && (
                 <p className="flex items-center gap-1">
@@ -404,6 +545,16 @@ export default function ServiceConsole() {
             >
               {isDatabase ? 'DBMS Shell' : 'Response Playground'}
             </button>
+            {!isDatabase && (
+              <button
+                onClick={() => setActiveTab('domains')}
+                className={`px-4 py-2 rounded-lg font-bold transition-all ${
+                  activeTab === 'domains' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Custom Domain
+              </button>
+            )}
           </div>
 
           <div className="flex-grow flex flex-col h-[380px] max-h-[380px]">
@@ -428,7 +579,7 @@ export default function ServiceConsole() {
                   <div ref={terminalEndRef} />
                 </div>
               </div>
-            ) : (
+            ) : activeTab === 'shell' ? (
               /* Interactive Sandbox Command shell terminal client */
               <div className="bg-slate-950 font-mono text-xs border border-slate-800 rounded-2xl overflow-hidden shadow-lg flex-grow flex flex-col">
                 <div className="bg-slate-900 border-b border-slate-800 px-4 py-3 flex items-center justify-between text-slate-500 select-none">
@@ -451,7 +602,7 @@ export default function ServiceConsole() {
 
                 {/* Form command input line */}
                 <form onSubmit={handleShellCommand} className="flex border-t border-slate-800/80">
-                  <span className="text-slate-500 bg-slate-900 py-3.5 pl-4 pr-1 font-bold">{'>'}</span>
+                  <span className="text-slate-550 bg-slate-900 py-3.5 pl-4 pr-1 font-bold">{'>'}</span>
                   <input
                     type="text"
                     value={shellInput}
@@ -463,12 +614,120 @@ export default function ServiceConsole() {
                         ? 'SET value_one 420'
                         : 'GET /users'
                     }
-                    className="flex-grow bg-transparent text-slate-200 outline-none px-2 py-3 placeholder-slate-600"
+                    className="flex-grow bg-transparent text-slate-200 outline-none px-2 py-3 placeholder-slate-600 font-mono"
                   />
                   <button type="submit" className="bg-slate-900 hover:bg-slate-800 transition-colors pr-4 pl-3 py-3 text-cyan-400">
                     <Send className="h-4 w-4" />
                   </button>
                 </form>
+              </div>
+            ) : (
+              /* Custom Domain view panel */
+              <div className="bg-[#090f1d] border border-slate-800 rounded-2xl p-5 flex-grow flex flex-col justify-between overflow-y-auto h-full text-slate-300">
+                <div className="space-y-4">
+                  <div className="border-b border-indigo-950 pb-2.5">
+                    <p className="text-xs font-bold font-heading text-white">Custom Domain Management</p>
+                    <p className="text-[10px] text-slate-500 font-sans mt-0.5">Route your professional apex domain or subdomains to point to this container port.</p>
+                  </div>
+
+                  {!service.customDomain ? (
+                    <div className="space-y-3 pt-1">
+                      <div className="space-y-1 font-mono">
+                        <label className="text-[10px] text-slate-405 uppercase tracking-widest block font-bold">Add Custom Domain Reference</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. portfolio.com or app.mybrand.com"
+                          value={customDomainInput}
+                          onChange={(e) => {
+                            setCustomDomainInput(e.target.value.toLowerCase().trim().replace(/[^a-z0-9\.\-]/g, ''));
+                            setDomainError(null);
+                          }}
+                          className="w-full bg-[#050810] border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/40"
+                        />
+                      </div>
+                      {domainError && (
+                        <p className="text-[10px] text-rose-400 font-mono">⚠️ {domainError}</p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleAddCustomDomain}
+                        className="w-full bg-cyan-400 hover:bg-cyan-300 transition-colors text-[#050810] font-bold py-2.5 rounded-xl text-[11px] uppercase tracking-wider font-mono cursor-pointer"
+                      >
+                        + Bind Custom Domain
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Domain current status block */}
+                      <div className="p-3.5 bg-slate-950/80 border border-slate-900 rounded-xl space-y-2">
+                        <div className="flex justify-between items-center bg-[#070b14]/50 border border-slate-900/40 p-2.5 rounded-lg">
+                          <div>
+                            <p className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Configured Domain</p>
+                            <p className="text-xs font-bold text-white selection:bg-cyan-500/30 font-mono">{service.customDomain}</p>
+                          </div>
+                          <span className={`text-[9.5px] font-mono px-2 py-0.5 rounded border ${
+                            service.customDomainStatus === 'verified'
+                              ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
+                              : 'bg-amber-505/10 text-amber-300 border-amber-500/20 animate-pulse'
+                          }`}>
+                            {service.customDomainStatus === 'verified' ? '✓ Verified & Live' : '● DNS Probe Pending'}
+                          </span>
+                        </div>
+
+                        {service.customDomainStatus !== 'verified' ? (
+                          <div className="space-y-3 pt-1 text-[11px]">
+                            {/* Verification guidelines */}
+                            <div className="space-y-2 font-mono bg-slate-900/40 border border-slate-900 rounded-lg p-3 text-[10px] leading-relaxed text-slate-400">
+                              <p className="text-slate-300 font-bold mb-1">🔌 Route DNS Settings</p>
+                              <p className="text-[9px] text-slate-500 leading-normal">Configure the following settings in your domain registrar's DNS panel (e.g., Namecheap, Cloudflare, GoDaddy):</p>
+                              
+                              <div className="space-y-1 bg-slate-950 p-2 rounded border border-slate-900 select-all">
+                                <p><span className="text-cyan-400">Type:</span> CNAME</p>
+                                <p><span className="text-cyan-400">Host/Name:</span> {service.customDomain.includes('.') && !service.customDomain.endsWith('.com') ? service.customDomain.split('.')[0] : '@'}</p>
+                                <p><span className="text-cyan-400">Value:</span> cname.vortex.dev</p>
+                              </div>
+                              <div className="space-y-1 bg-slate-950 p-2 rounded border border-slate-900 select-all">
+                                <p><span className="text-indigo-400">Type:</span> TXT</p>
+                                <p><span className="text-indigo-400">Host:</span> _vortex-challenge</p>
+                                <p><span className="text-indigo-400">Value:</span> vx-challenge-{service.id.substring(0, 8)}</p>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              disabled={isVerifyingDomain}
+                              onClick={handleVerifyCustomDomain}
+                              className="w-full bg-slate-900 hover:bg-slate-800 border border-slate-805 hover:border-slate-700 font-bold font-mono py-2.5 rounded-xl text-[10px] text-cyan-400 tracking-wider transition-colors flex items-center justify-center gap-2 uppercase cursor-pointer"
+                            >
+                              {isVerifyingDomain ? (
+                                <>
+                                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                                  <span>Probing DNS Servers...</span>
+                                </>
+                              ) : (
+                                <span>Verify DNS Config</span>
+                              )}
+                            </button>
+                            {domainError && <p className="text-[10px] text-center text-rose-400 font-mono mt-1">{domainError}</p>}
+                          </div>
+                        ) : (
+                          <div className="bg-emerald-500/5 border border-emerald-500/15 p-3 rounded-lg flex items-start gap-2 text-[10px] leading-relaxed text-emerald-300/90 font-mono">
+                            <span className="text-emerald-400 font-bold shrink-0">✓</span>
+                            <span>Edge SSL handshakes validated. Edge Router nodes have fully cached your domain. Click on preview URL to view live.</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleDeleteCustomDomain}
+                        className="text-red-400 hover:text-red-300 font-mono text-[10px] hover:underline font-bold"
+                      >
+                        Delete Custom Domain Mapping
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>

@@ -32,6 +32,8 @@ export interface Service {
   port?: number;
   domain?: string;
   endpoint?: string;
+  customDomain?: string;
+  customDomainStatus?: 'pending' | 'verified';
   createdAt: any;
 }
 

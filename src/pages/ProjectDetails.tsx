@@ -254,9 +254,24 @@ export default function ProjectDetails() {
                       </span>
                     </div>
 
-                    <p className="text-xs text-slate-400 font-mono tracking-wide truncate max-w-[280px] sm:max-w-[400px]">
-                      {service.domain}
-                    </p>
+                    {service.type === 'web_service' || service.type === 'static_site' ? (
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          window.open(service.endpoint && service.endpoint.startsWith('http') ? service.endpoint : `https://${service.domain}`, '_blank', 'noopener,noreferrer');
+                        }}
+                        className="text-xs text-cyan-400 hover:text-cyan-300 font-mono tracking-wide truncate max-w-[280px] sm:max-w-[400px] flex items-center gap-1 hover:underline cursor-pointer"
+                        title="Open Live Preview"
+                      >
+                        <span className="truncate">{service.domain}</span>
+                        <ExternalLink className="h-3 w-3 shrink-0 inline text-cyan-500" />
+                      </span>
+                    ) : (
+                      <p className="text-xs text-slate-400 font-mono tracking-wide truncate max-w-[280px] sm:max-w-[400px]">
+                        {service.domain}
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2 text-xs font-mono text-cyan-400 font-bold group-hover:translate-x-1 transition-all">
