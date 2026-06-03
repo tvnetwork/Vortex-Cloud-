@@ -221,7 +221,9 @@ const BottomNavigation = () => {
 // Pages
 import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
+import CreateProject from './pages/CreateProject';
 import ProjectDetails from './pages/ProjectDetails';
+import DeployService from './pages/DeployService';
 import ServiceConsole from './pages/ServiceConsole';
 import Community from './pages/Community';
 import Wallet from './pages/Wallet';
@@ -236,7 +238,9 @@ const AnimatedRoutes = () => {
         <Routes location={location}>
           <Route path="/" element={<PageTransition><Home /></PageTransition>} />
           <Route path="/dashboard" element={<PageTransition><Dashboard /></PageTransition>} />
+          <Route path="/project/new" element={<PageTransition><CreateProject /></PageTransition>} />
           <Route path="/project/:projectId" element={<PageTransition><ProjectDetails /></PageTransition>} />
+          <Route path="/project/:projectId/deploy" element={<PageTransition><DeployService /></PageTransition>} />
           <Route path="/service/:serviceId" element={<PageTransition><ServiceConsole /></PageTransition>} />
           <Route path="/community" element={<PageTransition><Community /></PageTransition>} />
           <Route path="/wallet" element={<PageTransition><Wallet /></PageTransition>} />

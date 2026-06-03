@@ -35,12 +35,6 @@ export default function Dashboard() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [allServices, setAllServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // New Project Form Modal
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [projectName, setProjectName] = useState('');
-  const [projectDesc, setProjectDesc] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -93,28 +87,6 @@ export default function Dashboard() {
     };
   }, [user]);
 
-  const handleCreateProject = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !projectName.trim()) return;
-
-    setIsSubmitting(true);
-    try {
-      await addDoc(collection(db, 'projects'), {
-        name: projectName.trim(),
-        description: projectDesc.trim(),
-        ownerId: user.uid,
-        createdAt: serverTimestamp()
-      });
-      setProjectName('');
-      setProjectDesc('');
-      setIsModalOpen(false);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'projects');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const filteredProjects = projects.filter(proj => 
     proj.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     proj.description.toLowerCase().includes(searchQuery.toLowerCase())
@@ -132,7 +104,7 @@ export default function Dashboard() {
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => navigate('/project/new')}
           className="bg-gradient-to-r from-cyan-500 to-indigo-500 text-white font-bold px-6 py-3 rounded-xl shadow-lg shadow-cyan-500/15 hover:opacity-90 transition-all flex items-center gap-2"
         >
           <Plus className="h-4 w-4" />
@@ -214,7 +186,7 @@ export default function Dashboard() {
               </div>
               <p className="text-slate-400 text-sm">No project workspaces match your criteria.</p>
               <button
-                onClick={() => setIsModalOpen(true)}
+                onClick={() => navigate('/project/new')}
                 className="bg-slate-900 border border-slate-800 hover:border-slate-700 text-cyan-400 font-bold px-6 py-2.5 rounded-xl font-mono text-xs transition-all"
               >
                 + Create First Workspace
@@ -292,71 +264,6 @@ export default function Dashboard() {
           )}
         </div>
       )}
-
-      {/* New Project Dialog Modal */}
-      <AnimatePresence>
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="bg-[#090f1d] border border-slate-800 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative"
-            >
-              <h2 className="text-xl font-bold font-heading text-white mb-2">Create Deployment Workspace</h2>
-              <p className="text-slate-400 text-xs mb-6">Create a logical partition to host databases, edge workers, and web services.</p>
-
-              <form onSubmit={handleCreateProject} className="space-y-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-mono text-slate-400 uppercase tracking-wider">Project Name</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. core-auth-microservice"
-                    value={projectName}
-                    onChange={(e) => setProjectName(e.target.value)}
-                    maxLength={100}
-                    className="w-full bg-[#050810] border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-mono text-slate-400 uppercase tracking-wider">Description (Optional)</label>
-                  <textarea
-                    placeholder="Describe what services are hosted in this node."
-                    value={projectDesc}
-                    onChange={(e) => setProjectDesc(e.target.value)}
-                    maxLength={500}
-                    rows={3}
-                    className="w-full bg-[#050810] border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 resize-none"
-                  />
-                </div>
-
-                <div className="flex gap-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    className="w-1/2 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800/50 py-3 rounded-xl text-sm font-semibold transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-1/2 bg-cyan-400 hover:bg-cyan-300 disabled:opacity-50 text-[#050810] py-3 rounded-xl text-sm font-bold transition-all shadow-md shadow-cyan-400/10 flex items-center justify-center gap-2"
-                  >
-                    {isSubmitting ? (
-                      <Terminal className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <span>Initialize Node</span>
-                    )}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
