@@ -137,16 +137,8 @@ export default function CreateProject() {
           port: backendPort,
           domain: hostName,
           endpoint: `https://${hostName}`,
-          createdAt: serverTimestamp()
-        });
-
-        await addDoc(collection(db, 'deployments'), {
-          deploymentId: deploymentRef.id,
-          projectId: docRef.id,
-          ownerId: user.uid,
           commitMsg: 'Initial deployment from repository import',
           commitHash: Math.random().toString(16).substring(2, 9),
-          status: deployStatus,
           logs: [
             `Running build in web_deployment environment...`,
             `Provisioning deployment container...`,
@@ -173,7 +165,7 @@ export default function CreateProject() {
       }
     } catch (error) {
       console.error('Error creating project:', error);
-      alert('Failed to create project.');
+      alert('Failed to deploy project. Please try again.');
       setIsSubmitting(false);
     }
   };
