@@ -136,7 +136,7 @@ export default function DeploymentDetails() {
     setTimeout(async () => {
       try {
         const svcRef = doc(db, 'deployments', deployment.id);
-        const verifiedDomain = deployment.customDomain || 'custom.deploy.kontyra.name.ng';
+        const verifiedDomain = deployment.customDomain || 'custom.apps.kontyra.name.ng';
         await updateDoc(svcRef, {
           customDomainStatus: 'verified',
           domain: verifiedDomain,
@@ -167,7 +167,7 @@ export default function DeploymentDetails() {
     try {
       const svcRef = doc(db, 'deployments', deployment.id);
       const randId = Math.random().toString(36).substring(2, 7);
-      const hostName = `${deployment.name.toLowerCase()}-${randId}.deploy.kontyra.name.ng`;
+      const hostName = `${deployment.name.toLowerCase()}-${randId}.apps.kontyra.name.ng`;
       
       await updateDoc(svcRef, {
         customDomain: null,

@@ -80,7 +80,7 @@ export default function ProjectDetails() {
   }
 
   const mainService = deployments.find(s => s.type === 'web_deployment' || s.type === 'static_site') || deployments[0];
-  const displayDomain = mainService ? `${mainService.name}.deploy.kontyra.name.ng` : `${project.name}.kontyra.name.ng`;
+  const displayDomain = mainService ? `${mainService.name}.apps.kontyra.name.ng` : `${project.name}.apps.kontyra.name.ng`;
 
   const tabs = [
     { name: 'Overview', path: `/projects/${projectId}`, exact: true },

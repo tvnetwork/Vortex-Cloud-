@@ -199,7 +199,7 @@ export default function CreateDeployment() {
     setIsSubmitting(true);
     try {
       const randId = Math.random().toString(36).substring(2, 7);
-      const hostName = `${deploymentName.toLowerCase()}-${randId}.deploy.kontyra.name.ng`;
+      const hostName = `${deploymentName.toLowerCase()}-${randId}.apps.kontyra.name.ng`;
       const endpointVal = deploymentType === 'postgres' 
         ? `postgresql://vortex_user:${randId}99@${hostName}:5432/vortex_db`
         : deploymentType === 'redis'
